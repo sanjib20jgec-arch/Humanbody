@@ -1,0 +1,17 @@
+import { chromium, devices } from '@playwright/test';
+const browser = await chromium.launch();
+const page = await browser.newPage({ ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } });
+await page.goto('http://127.0.0.1:5173/');
+await page.waitForSelector('[data-hbl-app="true"]');
+await page.waitForTimeout(6000);
+await page.screenshot({ path: 'docs/screenshots/shot-home.png' });
+await page.locator('.module-list-item').filter({ hasText: 'Circulation' }).click();
+await page.waitForSelector('.reference-object-note', { timeout: 20000 });
+await page.waitForTimeout(5000);
+await page.screenshot({ path: 'docs/screenshots/shot-circulation-explore.png' });
+await page.getByRole('button', { name: 'SIMULATE' }).first().click();
+await page.getByRole('button', { name: 'Run model' }).click().catch(() => {});
+await page.waitForTimeout(3500);
+await page.screenshot({ path: 'docs/screenshots/shot-circulation-sim.png' });
+await browser.close();
+console.log('done');

@@ -1,0 +1,14 @@
+import { chromium, devices } from '@playwright/test';
+const browser = await chromium.launch();
+const page = await browser.newPage({ ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } });
+page.on('console', (msg) => { if (msg.type() === 'error') console.log('CONSOLE ERR:', msg.text().slice(0, 300)); });
+page.on('pageerror', (err) => console.log('PAGE ERR:', String(err).slice(0, 300)));
+await page.goto('http://127.0.0.1:5173/');
+await page.waitForSelector('[data-hbl-app="true"]');
+await page.locator('.module-list-item').filter({ hasText: 'Circulation' }).click();
+await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'SIMULATE' }).first().click();
+await page.waitForTimeout(2500);
+console.log('cardio-graph-card count:', await page.locator('.cardio-graph-card').count());
+console.log('error boundary count:', await page.locator('.error-boundary-fallback').count());
+await browser.close();

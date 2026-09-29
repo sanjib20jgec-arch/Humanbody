@@ -1,0 +1,27 @@
+# Deployment-safe caching and browser security policy for static Vite output.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; media-src 'self' blob:
+
+/index.html
+  Cache-Control: no-cache, max-age=0, must-revalidate
+
+/sw.js
+  Cache-Control: no-cache, max-age=0, must-revalidate
+  Service-Worker-Allowed: /
+  X-Content-Type-Options: nosniff
+
+/manifest.webmanifest
+  Cache-Control: public, max-age=3600
+  Content-Type: application/manifest+json
+  X-Content-Type-Options: nosniff
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+  X-Content-Type-Options: nosniff
+
+/models/*
+  Cache-Control: public, max-age=31536000, immutable
+  X-Content-Type-Options: nosniff

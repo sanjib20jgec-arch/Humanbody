@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="theme-color" content="#08111c" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="description" content="Human Biology Lab — interactive simulations for curious students." />
+    <title>Human Biology Lab</title>
+  </head>
+  <body>
+    <div id="root">
+      <div id="boot-status" style="min-height:100vh;display:grid;place-items:center;background:#08111c;color:#dce8f5;font:14px system-ui,sans-serif;letter-spacing:.04em;">
+        Loading Human Biology Lab…
+      </div>
+    </div>
+    <noscript>Human Biology Lab needs JavaScript enabled to run the interactive simulations.</noscript>
+    <script>
+      (() => {
+        const showBootError = (message) => {
+          const root = document.getElementById('root');
+          if (window.__HBL_APP_MOUNTED__ || !root || root.querySelector('[data-hbl-app]')) return;
+          root.innerHTML = `<div style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#08111c;color:#dce8f5;font:14px system-ui,sans-serif;text-align:center"><div><strong style="display:block;font-size:18px">Human Biology Lab could not start</strong><span style="display:block;margin:10px 0;color:#91a5bc;font-size:12px">${String(message || 'The app script did not load.').replace(/[<>&]/g, '')}</span><button onclick="location.reload()" style="padding:10px 14px;color:#06131d;background:#4dd8df;border:0;border-radius:8px;font:inherit;font-weight:700">Reload preview</button></div></div>`;
+        };
+        window.addEventListener('error', (event) => showBootError(event.message), { once: true });
+        window.addEventListener('unhandledrejection', (event) => showBootError(event.reason?.message || event.reason), { once: true });
+        window.setTimeout(() => {
+          const root = document.getElementById('root');
+          if (!window.__HBL_APP_MOUNTED__ && root && !root.querySelector('[data-hbl-app]')) showBootError('The app script did not load within 8 seconds.');
+        }, 8000);
+      })();
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

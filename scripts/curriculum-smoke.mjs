@@ -1,0 +1,61 @@
+import { readFile } from 'node:fs/promises';
+
+const [app, data, progress, guidedPathLib, referenceObject, nervous, circulation, digestion, respiration, excretion, reproduction, heredity, tissues] = await Promise.all([
+  readFile('src/App.jsx', 'utf8'),
+  readFile('src/data/modules.js', 'utf8'),
+  readFile('src/lib/progress.js', 'utf8'),
+  readFile('src/lib/guidedPath.js', 'utf8'),
+  readFile('src/components/ReferenceObject3D.jsx', 'utf8'),
+  readFile('src/simulations/NervousLab.jsx', 'utf8'),
+  readFile('src/simulations/CirculationLab.jsx', 'utf8'),
+  readFile('src/simulations/DigestiveLab.jsx', 'utf8'),
+  readFile('src/simulations/RespirationLab.jsx', 'utf8'),
+  readFile('src/simulations/ExcretionLab.jsx', 'utf8'),
+  readFile('src/simulations/ReproductionLab.jsx', 'utf8'),
+  readFile('src/simulations/HeredityLab.jsx', 'utf8'),
+  readFile('src/simulations/TissuesLab.jsx', 'utf8')
+]);
+const checks = [
+  ['guided path data', data.includes("export const guidedPath = ['cell', 'tissues', 'digestion', 'circulation', 'nervous', 'respiration', 'excretion', 'reproduction', 'heredity', 'kinesiology'];")],
+  ['guided path metadata', data.includes('export const guidedPathMeta') && data.includes('estimatedMinutes') && data.includes('pathReason')],
+  ['guided path recommendation resolver', guidedPathLib.includes('getGuidedRecommendation') && guidedPathLib.includes('getGuidedStepState') && guidedPathLib.includes('CHECKPOINT_PASS_PERCENT')],
+  ['last module persistence', progress.includes('lastModule') && progress.includes('lastView')],
+  ['view persistence', progress.includes('visitedViews') && progress.includes('markView')],
+  ['continue action uses shared path recommendation', app.includes('getGuidedRecommendation') && app.includes('recommendation?.module')],
+  ['resume action uses saved view', app.includes('progress.lastModule === id') && app.includes('progress.lastView')],
+  ['guided path UI', app.includes('function GuidedPath') && app.includes('guided-path-steps') && app.includes('aria-current={current ? \'step\' : undefined}')],
+  ['guided path up next card', app.includes('function UpNextCard') && app.includes('UP NEXT IN THE GUIDED PATH') && app.includes('getGuidedRecommendation')],
+  ['guided path module navigation', app.includes('function ModulePathNav') && app.includes('Previous step') && app.includes('Next step')],
+  ['checkpoint pass threshold', app.includes('(correct / Math.max(total, 1)) * 100 >= 67') && progress.includes('passed:')],
+  ['reusable 3D reference object contract', referenceObject.includes('BodyMap3DAtlas') && referenceObject.includes('Rotate 360°') && referenceObject.includes('source and license')],
+  ['focused reference object fallback', referenceObject.includes('Accessible') || referenceObject.includes('accessible')],
+  ['brain and nerves checkpoint', data.includes('nervous: [') && nervous.includes('Brain & nerves checkpoint')],
+  ['brain and nerves CNS/PNS distinction', nervous.toLowerCase().includes('central and peripheral nervous systems') && nervous.includes('CNS means brain and spinal cord') && nervous.includes("name: 'Peripheral nerves'")],
+  ['brain and nerves diagram source disclosure', nervous.includes('BodyParts3D 4.0 adult-male atlas') && nervous.includes('simplified teaching schematic')],
+  ['brain and nerves signal animation', nervous.includes('neural-signal signal-left') && nervous.includes('neural-signal signal-right') && nervous.includes('reducedMotion')],
+  ['circulation certified 3D reference', circulation.includes('ReferenceObject3D') && circulation.includes("systems={['cardiac', 'arterial', 'venous']}") && circulation.includes('BodyParts3D 4.0 adult-male reference atlas')],
+  ['circulation source terminology', circulation.includes('pulmonary/systemic flow') && circulation.includes('Pressure drives the pump')],
+  ['circulation interactive chamber mapping', circulation.includes('handleAnatomySelect') && circulation.includes('selectedChamber')],
+  ['digestion diagram source disclosure', digestion.includes('Simplified teaching schematic') && digestion.includes('23-1-overview-of-the-digestive-system') && digestion.includes('23-2-digestive-system-processes-and-regulation')],
+  ['digestion reference plate', digestion.includes('/reference/openstax-digestive-23-2.webp') && digestion.includes('reference-digestive') && digestion.includes('FOOD BOLUS')],
+  ['digestion pathway relationship disclosure', digestion.includes('accessory organs that support digestion rather than part of the food path') && digestion.includes('digestive-path-key')],
+  ['brain and nerves simulation', nervous.includes('Touch hot surface') && nervous.includes('reflexSteps')],
+  ['respiration is live', data.includes("id: 'respiration'") && data.includes("status: 'core'")],
+  ['respiration simulation', respiration.includes('Breathing simulation controls') && respiration.includes('minuteVentilation')],
+  ['respiration checkpoint', data.includes('respiration: [') && data.includes('Alveoli')],
+  ['excretion is live', data.includes("id: 'excretion'") && data.includes("status: 'core'")],
+  ['excretion simulation', excretion.includes('Nephron simulation controls') && excretion.includes('urinePerDay')],
+  ['excretion checkpoint', data.includes('excretion: [') && data.includes('ADH')],
+  ['reproduction is live', data.includes("id: 'reproduction'") && data.includes("status: 'core'")],
+  ['reproduction simulation', reproduction.includes('Reproductive cycle simulation controls') && reproduction.includes('hormones')],
+  ['reproduction checkpoint', data.includes('reproduction: [') && data.includes('Ovulation')],
+  ['heredity is live', data.includes("id: 'heredity'") && data.includes("status: 'core'")],
+  ['heredity simulation', heredity.includes('Punnett square simulation controls') && heredity.includes('dominantCount')],
+  ['heredity checkpoint', data.includes('heredity: [') && data.includes('Punnett square')],
+  ['tissues is live', data.includes("id: 'tissues'") && data.includes("status: 'core'")],
+  ['tissues simulation', tissues.includes('Tissue pattern simulation controls') && tissues.includes('completedSignals') && tissues.includes('setSelectedId(id)')],
+  ['tissues checkpoint', data.includes('tissues: [') && data.includes('Epithelial')]
+];
+const failures = checks.filter(([, pass]) => !pass).map(([name]) => name);
+if (failures.length) throw new Error(`Curriculum smoke check failed: ${failures.join(', ')}`);
+console.log('HBL guided curriculum smoke check passed.');

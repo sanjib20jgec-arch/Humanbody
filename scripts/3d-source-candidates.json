@@ -1,0 +1,267 @@
+{
+  "version": 2,
+  "status": "candidate-intake",
+  "runtimePolicy": "No candidate is loaded by the application until scientific, provenance, entry-specific license, visual, and offline-asset reviews are all complete and recorded. Repository presence (NIH 3D, RCSB) is never itself an approval: NIH 3D terms require independent verification of scientific conclusions and entry-specific licensing.",
+  "requiredGates": [
+    "scientific",
+    "provenance",
+    "license",
+    "visual",
+    "offline"
+  ],
+  "candidates": [
+    {
+      "candidateId": "cell-nih3d",
+      "moduleId": "cell",
+      "provider": "NIH 3D Print Exchange",
+      "url": "https://3dprint.nih.gov/",
+      "fit": "Biomedical cell and organelle models may provide candidate geometry for a future conceptual cell reference.",
+      "entrySpecificId": null,
+      "reviews": {
+        "scientific": {
+          "status": "pending",
+          "note": "Model provenance, scale, organelle labeling, and topology must be checked per entry."
+        },
+        "provenance": {
+          "status": "pending",
+          "note": "A specific versioned entry with creator and dataset citation is required."
+        },
+        "license": {
+          "status": "pending",
+          "note": "Entry-specific license review required; repository terms note that licenses vary by entry."
+        },
+        "visual": {
+          "status": "pending",
+          "note": "Human visual review of geometry quality and educational scope."
+        },
+        "offline": {
+          "status": "pending",
+          "note": "Local packaging and offline redistribution rights must be confirmed."
+        }
+      },
+      "decision": "not-reviewed",
+      "status": "candidate-not-approved"
+    },
+    {
+      "candidateId": "cell-rcsb",
+      "moduleId": "cell",
+      "provider": "RCSB Protein Data Bank / Mol*",
+      "url": "https://www.rcsb.org/",
+      "fit": "Molecular 3D structures could support a future molecule-scale supplement, not a whole-cell anatomy reference.",
+      "entrySpecificId": null,
+      "reviews": {
+        "scientific": {
+          "status": "pending",
+          "note": "Atomic or molecular structures must not be presented as a complete cell."
+        },
+        "provenance": {
+          "status": "pending",
+          "note": "PDB entry, resolution, and method must be recorded."
+        },
+        "license": {
+          "status": "pending",
+          "note": "Archive and entry terms must be checked for each selected structure and attribution."
+        },
+        "visual": {
+          "status": "pending",
+          "note": "Representation style must be reviewed for educational clarity."
+        },
+        "offline": {
+          "status": "pending",
+          "note": "Static local export must replace any runtime viewer dependency."
+        }
+      },
+      "decision": "not-reviewed",
+      "status": "candidate-not-approved"
+    },
+    {
+      "candidateId": "tissues-nih3d",
+      "moduleId": "tissues",
+      "provider": "NIH 3D Print Exchange",
+      "url": "https://3dprint.nih.gov/",
+      "fit": "Biomedical tissue or body-part models may provide candidate macro geometry for a future tissue-context view.",
+      "entrySpecificId": null,
+      "reviews": {
+        "scientific": {
+          "status": "pending",
+          "note": "Histology scale, tissue identity, and source annotations must be reviewed by an expert."
+        },
+        "provenance": {
+          "status": "pending",
+          "note": "A specific versioned entry with creator and dataset citation is required."
+        },
+        "license": {
+          "status": "pending",
+          "note": "Entry-specific license review required; repository terms note that licenses vary by entry."
+        },
+        "visual": {
+          "status": "pending",
+          "note": "Human visual review of geometry quality and educational scope."
+        },
+        "offline": {
+          "status": "pending",
+          "note": "Local packaging and offline redistribution rights must be confirmed."
+        }
+      },
+      "decision": "not-reviewed",
+      "status": "candidate-not-approved"
+    },
+    {
+      "candidateId": "heredity-rcsb",
+      "moduleId": "heredity",
+      "provider": "RCSB Protein Data Bank / Mol*",
+      "url": "https://www.rcsb.org/",
+      "fit": "DNA, RNA, and protein structures could support a molecular-scale heredity supplement.",
+      "entrySpecificId": null,
+      "reviews": {
+        "scientific": {
+          "status": "pending",
+          "note": "Molecular structure is not a chromosome-scale inheritance map or a trait predictor."
+        },
+        "provenance": {
+          "status": "pending",
+          "note": "PDB entry, resolution, and method must be recorded."
+        },
+        "license": {
+          "status": "pending",
+          "note": "Archive and entry terms must be checked for each selected structure and attribution."
+        },
+        "visual": {
+          "status": "pending",
+          "note": "Representation style must be reviewed for educational clarity."
+        },
+        "offline": {
+          "status": "pending",
+          "note": "Static local export must replace any runtime viewer dependency."
+        }
+      },
+      "decision": "not-reviewed",
+      "status": "candidate-not-approved"
+    },
+    {
+      "candidateId": "heredity-nih3d",
+      "moduleId": "heredity",
+      "provider": "NIH 3D Print Exchange",
+      "url": "https://3dprint.nih.gov/",
+      "fit": "DNA or molecule models may be candidates for a symbolic 3D supplement.",
+      "entrySpecificId": null,
+      "reviews": {
+        "scientific": {
+          "status": "pending",
+          "note": "Scientific scope and educational labeling must be reviewed before use."
+        },
+        "provenance": {
+          "status": "pending",
+          "note": "A specific versioned entry with creator and dataset citation is required."
+        },
+        "license": {
+          "status": "pending",
+          "note": "Entry-specific license review required; repository terms note that licenses vary by entry."
+        },
+        "visual": {
+          "status": "pending",
+          "note": "Human visual review of geometry quality and educational scope."
+        },
+        "offline": {
+          "status": "pending",
+          "note": "Local packaging and offline redistribution rights must be confirmed."
+        }
+      },
+      "decision": "not-reviewed",
+      "status": "candidate-not-approved"
+    },
+    {
+      "candidateId": "kinesiology-performance-rig",
+      "moduleId": "kinesiology",
+      "provider": "Authored in-house (Human Biology Lab), procedural articulated performance rig",
+      "url": "docs/PROVENANCE_AUDIT_KINESIOLOGY.md",
+      "fit": "In-sandbox v1 performance body (D6): realistic-proportioned articulated teaching figure with named muscle meshes; photoreal upgrade path is MakeHuman (D1).",
+      "entrySpecificId": "authored-rig-v1",
+      "status": "candidate-intake",
+      "reviews": {
+        "scientific": {
+          "status": "pending",
+          "note": "G1: proportions, joint ROM, muscle origin/insertion plausibility per docs/KINESIOLOGY_SCIENTIFIC_INSPECTION.md."
+        },
+        "provenance": {
+          "status": "pending",
+          "note": "Authored in-sandbox; chain recorded in vendor/kinesiology/PROVENANCE.json."
+        },
+        "license": {
+          "status": "pending",
+          "note": "CC0-equivalent (in-house authored); confirm no third-party geometry incorporated."
+        },
+        "visual": {
+          "status": "pending",
+          "note": "Human visual review of figure quality, muscle placement, and disclosures per camera preset."
+        },
+        "offline": {
+          "status": "pending",
+          "note": "Procedural (no download); cache budget to be recorded in Phase 72."
+        }
+      }
+    },
+    {
+      "candidateId": "kinesiology-motion-cmu-mirror",
+      "moduleId": "kinesiology",
+      "provider": "CMU Graphics Lab Motion Capture Database, via lawrennd/mocap GitHub mirror (BVH conversions)",
+      "url": "http://mocap.cs.cmu.edu/",
+      "fit": "Real captured human locomotion trials to retarget onto the performance rig; CMU acknowledgment shipped (D4).",
+      "entrySpecificId": "lawrennd/mocap:python/files/10_01.bvh,10_03.bvh,11_01.bvh,14_06.bvh,14_10.bvh,14_19.bvh,Swagger.bvh",
+      "status": "candidate-intake",
+      "reviews": {
+        "scientific": {
+          "status": "pending",
+          "note": "G1: clip content identification, cadence/ROM vs published gait data, retarget artifact review."
+        },
+        "provenance": {
+          "status": "pending",
+          "note": "Mirror checksums recorded at download; primary host unreachable from sandbox (environment log)."
+        },
+        "license": {
+          "status": "pending",
+          "note": "CMU classic terms: inclusion allowed with acknowledgment; no raw/converted resale; embed-only."
+        },
+        "visual": {
+          "status": "pending",
+          "note": "Human visual review of retargeted motion quality."
+        },
+        "offline": {
+          "status": "pending",
+          "note": "Baked derived clips packaged locally; raw files never served."
+        }
+      }
+    },
+    {
+      "candidateId": "kinesiology-body-makehuman",
+      "moduleId": "kinesiology",
+      "provider": "MakeHuman / MPFB community core assets",
+      "url": "https://static.makehumancommunity.org/mpfb/faq/use_in_closed_source.html",
+      "fit": "Production photoreal upgrade: CC0 skinned body + muscle layer on one rig (D1). Not executable in sandbox.",
+      "entrySpecificId": null,
+      "status": "candidate-intake",
+      "reviews": {
+        "scientific": {
+          "status": "pending",
+          "note": "G1 in production environment before any use."
+        },
+        "provenance": {
+          "status": "pending",
+          "note": "Record toolchain + asset versions at production run."
+        },
+        "license": {
+          "status": "pending",
+          "note": "CC0 per MakeHuman core-assets FAQ; verify per-file at production run."
+        },
+        "visual": {
+          "status": "pending",
+          "note": "Human visual review of produced rig."
+        },
+        "offline": {
+          "status": "pending",
+          "note": "Draco GLB budget review at production run."
+        }
+      }
+    }
+  ]
+}

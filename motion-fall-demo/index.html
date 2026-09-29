@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="description" content="Offline-ready Three.js and cannon-es educational motion-fall demo.">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./style.css">
+  <title>Motion-Fall Lab · 3D balance demo</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three.module.js",
+      "cannon-es": "./vendor/cannon-es.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div><p class="kicker">MOTION-FALL LAB · 3D PHYSICS</p><h1>Balance under an impact event</h1></div>
+      </div>
+      <div class="top-status">
+        <span id="offline-status" class="status-pill pending" aria-live="polite"><i></i> Preparing offline shell</span>
+        <span id="render-status" class="status-pill" aria-live="polite"><i></i> WebGL active</span>
+        <span id="asset-status" class="status-pill" aria-live="polite"><i></i> Proxy mannequin</span>
+      </div>
+    </header>
+
+    <div id="update-banner" class="update-banner" role="status" aria-live="polite" hidden><span>New offline-ready version available.</span><button id="update-reload" class="secondary-button" type="button">Update now</button></div>
+
+    <main class="workspace">
+      <section class="scene-panel" aria-label="Three-dimensional motion-fall scene">
+        <div class="scene-toolbar">
+          <div><span class="kicker">TRUE 3D SCENE</span><strong>Orbit the mannequin · pan · zoom</strong></div>
+          <div class="toolbar-actions"><button id="camera-reset" class="ghost-button" type="button">Reset camera</button><button id="readme-open" class="ghost-button" type="button">README</button></div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="scene-canvas" tabindex="0" aria-label="Interactive 3D mannequin physics scene. Use mouse or touch to orbit, pan, and zoom." aria-describedby="canvas-help"></canvas>
+          <p id="canvas-help" class="visually-hidden">3D camera controls: drag with one finger or the left mouse button to orbit, use two fingers or the mouse wheel to zoom and pan, and use the controls panel for playback.</p>
+          <div class="scene-hud scene-hud-top">
+            <div class="hud-card state-card"><span class="kicker">STATE MACHINE</span><strong id="state-label" aria-live="polite">Locomotion</strong><div class="state-track" aria-label="Simulation state machine"><span data-state-track="Locomotion">Locomotion</span><b>→</b><span data-state-track="ImpactReact">ImpactReact</span><b>→</b><span data-state-track="Stagger">Stagger</span><b>→</b><span data-state-track="Collapse">Collapse</span><b>→</b><span data-state-track="Grounded">Grounded</span><b>→</b><span data-state-track="Recover">Recover</span></div></div>
+            <div class="hud-card telemetry-card"><span class="kicker">LIVE TELEMETRY</span><div><span>TIME</span><strong id="sim-clock">0.00 s</strong></div><div><span>STABILITY</span><strong id="stability-label" class="stable" aria-live="polite">Stable</strong></div><div><span>SEED</span><strong id="seed-value">—</strong></div><div><span>CONTACTS</span><strong id="contact-count">0</strong></div><div><span>XCOM EDGE</span><strong id="xcom-edge">—</strong></div><div class="replay-readout"><span>REPLAY</span><strong id="replay-status" aria-live="polite">Ready</strong></div></div>
+          </div>
+          <div class="scene-hud scene-hud-bottom">
+            <div class="legend-card"><span><i class="legend-dot com"></i> COM</span><span><i class="legend-dot support"></i> support polygon</span><span><i class="legend-dot path"></i> trajectory</span></div>
+            <div class="scene-note">Educational proxy · no gore, weapons, or clinical inference</div>
+          </div>
+          <div id="loading-scene" class="loading-scene"><div class="loading-orb"></div><strong>Building the physical mannequin</strong><span>Three.js renderer · cannon-es world · local assets only</span></div>
+        </div>
+      </section>
+
+      <aside class="control-panel" aria-label="Simulation controls">
+        <section class="control-section mode-section"><div class="section-heading"><div><span class="kicker">01 · SESSION</span><h2>Setup or playback</h2></div><span id="impact-readout" class="accent-readout" aria-live="polite">Impact ready</span></div><div class="segmented" role="group" aria-label="Session mode"><button type="button" id="mode-setup" data-mode="Setup" class="selected" aria-pressed="true" aria-keyshortcuts="S">Setup</button><button type="button" id="mode-playback" data-mode="Playback" aria-pressed="false">Playback</button></div><p id="mode-hint" class="control-hint">Setup mode edits the next run. Play starts a fresh seeded recording.</p><div class="field-label">Scenario preset</div><div class="option-grid two" role="group" aria-label="Scenario presets"><button type="button" data-scenario="gentle">Gentle walk</button><button type="button" data-scenario="slippery">Slippery run</button><button type="button" data-scenario="recovery">Grippy recovery</button><button type="button" data-scenario="high">High intensity</button></div><div class="button-row"><button type="button" id="copy-scenario" class="ghost-button wide">Copy scenario</button><button type="button" id="load-scenario" class="ghost-button wide">Load URL scenario</button></div><span id="scenario-status" class="scenario-status" aria-live="polite">Scenario ready</span></section>
+
+        <section class="control-section"><div class="section-heading"><div><span class="kicker">02 · MOVEMENT</span><h2>Before the event</h2></div></div><div class="option-grid three" role="group" aria-label="Movement preset"><button type="button" data-movement="Idle" class="selected" aria-pressed="true">Idle</button><button type="button" data-movement="Walk" aria-pressed="false">Walk</button><button type="button" data-movement="Run" aria-pressed="false">Run</button></div></section>
+
+        <section class="control-section"><div class="section-heading"><div><span class="kicker">03 · EVENT PARAMETERS</span><h2>Neutral impact model</h2></div></div><div class="field-label">Impact region</div><div class="option-grid three" role="group" aria-label="Impact region"><button type="button" data-region="Torso" class="selected" aria-pressed="true">Torso</button><button type="button" data-region="Arm" aria-pressed="false">Arm</button><button type="button" data-region="Leg" aria-pressed="false">Leg</button></div><div class="field-label">Impact direction</div><div class="option-grid four" role="group" aria-label="Impact direction"><button type="button" data-direction="Front" class="selected" aria-pressed="true">Front</button><button type="button" data-direction="Back" aria-pressed="false">Back</button><button type="button" data-direction="Left" aria-pressed="false">Left</button><button type="button" data-direction="Right" aria-pressed="false">Right</button></div><label class="range-row"><span><b>Intensity</b><output id="impact-intensity-value" aria-live="polite">0.55</output></span><input id="impact-intensity" type="range" min="0" max="1" step="0.01" value="0.55" aria-label="Impact intensity"></label></section>
+
+        <section class="control-section"><div class="section-heading"><div><span class="kicker">04 · SURFACE</span><h2>Contact condition</h2></div></div><div class="option-grid three" role="group" aria-label="Surface friction preset"><button type="button" data-friction="Normal" class="selected" aria-pressed="true">Normal</button><button type="button" data-friction="Slippery" aria-pressed="false">Slippery</button><button type="button" data-friction="Grippy" aria-pressed="false">Grippy</button></div><div class="friction-explainer"><span id="friction-description">Balanced static friction and rebound.</span><strong id="physics-readout">Physics quality: High</strong></div></section>
+
+        <section class="control-section"><div class="section-heading"><div><span class="kicker">05 · OVERLAYS</span><h2>Make the lesson visible</h2></div></div><div class="check-grid"><label><input id="show-com" type="checkbox" checked> COM marker</label><label><input id="show-support" type="checkbox" checked> Support polygon</label><label><input id="show-trajectory" type="checkbox" checked> COM trajectory</label></div></section>
+
+        <section class="control-section"><div class="section-heading"><div><span class="kicker">06 · QUALITY + TIME</span><h2>Playback controls</h2></div></div><div class="field-label">Slow motion</div><div class="option-grid three" role="group" aria-label="Slow motion speed"><button type="button" data-slow="1" class="selected" aria-pressed="true">1×</button><button type="button" data-slow="0.5" aria-pressed="false">0.5×</button><button type="button" data-slow="0.25" aria-pressed="false">0.25×</button></div><div class="field-label">Rendering quality</div><div class="option-grid two" role="group" aria-label="Rendering quality"><button type="button" data-quality="high" class="selected" aria-pressed="true">PC High</button><button type="button" data-quality="mobile" aria-pressed="false">Mobile Optimized</button></div><div class="button-row"><button type="button" id="play-button" class="primary-button" aria-keyshortcuts="Space">Play</button><button type="button" id="pause-button" class="secondary-button" aria-keyshortcuts="Space">Pause</button><button type="button" id="step-button" class="secondary-button" aria-keyshortcuts="N">Frame-step</button></div><div class="button-row"><button type="button" id="reset-button" class="ghost-button wide" aria-keyshortcuts="R">Reset</button><button type="button" id="replay-button" class="ghost-button wide">Replay same seed</button></div></section>
+
+        <section class="lesson-panel" aria-labelledby="lesson-heading"><div class="section-heading"><div><span class="kicker">07 · LESSON</span><h2 id="lesson-heading">What to notice</h2></div></div><p id="lesson-explanation" class="lesson-explanation" aria-live="polite">Watch the cyan COM marker stay over the amber support area during Stable motion.</p><div class="lesson-key"><span><b>COM</b> weighted center of proxy mass</span><span><b>XCoM</b> motion-aware balance projection</span><span><b>edge</b> distance from XCoM to support boundary</span></div></section>
+
+        <details class="readme-panel" id="readme-panel"><summary>README · how this demo works</summary><div class="readme-copy"><p>This is an educational motion-fall demo, not a clinical or injury-prediction tool. The mannequin is a proxy character with eleven cannon-es rigid bodies connected by limited ConeTwist constraints. A physical-animation spring drives the upright pose during Locomotion, ImpactReact, and Stagger; spring strength ramps down during Collapse so physics takes over smoothly.</p><p>The model uses a bounded seed for the impact variation. Replay restores the same seed and parameters and checks fixed-tick body-state hashes. COM, XCoM edge distance, support area, contact count, stability, and trajectory are explanatory overlays.</p><p><b>Safety:</b> neutral impact terms only; no gore, blood, weapons, tactics, targeting, or harm guidance.</p><p><b>Optional asset hook:</b> place <code>assets/character.glb</code> in this folder to display a character asset; physics bone mapping is intentionally documented but not required for the proxy.</p></div></details>
+      </aside>
+    </main>
+    <footer class="footer-bar"><span>Motion-Fall Lab · offline-ready WebGL + cannon-es</span><span>OrbitControls works with mouse and touch</span></footer>
+  </div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

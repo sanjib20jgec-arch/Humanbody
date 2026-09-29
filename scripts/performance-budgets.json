@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "policy": "Budgets are measured per device tier. A regression against any static budget fails CI. Runtime targets (frame time, draw calls) are verified in browser profiling and reported here; they must not be silently relaxed.",
+  "tiers": {
+    "desktop": {
+      "description": "Desktop Chromium, WebGL2, no save-data.",
+      "atlasCompressedMB": 35,
+      "largestChunkMB": 3,
+      "threeVendorKB": 800,
+      "atlasModuleKB": 90,
+      "maxDrawCalls": 220,
+      "frameMsP95": 22,
+      "decodedMemoryMB": 320
+    },
+    "mobile": {
+      "description": "Modern phone Chromium, capped interaction pixel ratio.",
+      "atlasCompressedMB": 35,
+      "largestChunkMB": 3,
+      "threeVendorKB": 800,
+      "atlasModuleKB": 90,
+      "maxDrawCalls": 160,
+      "frameMsP95": 33,
+      "decodedMemoryMB": 240
+    },
+    "lowPower": {
+      "description": "Save-data or low-memory handset; battery quality profile.",
+      "atlasCompressedMB": 35,
+      "largestChunkMB": 3,
+      "threeVendorKB": 800,
+      "atlasModuleKB": 90,
+      "maxDrawCalls": 140,
+      "frameMsP95": 40,
+      "decodedMemoryMB": 200
+    }
+  },
+  "runtimeTargets": {
+    "firstSkeletalReadyMs": "Measured from hbl-shell-mounted to hbl-skeletal-ready; reported from browser profiling, not asserted from static files.",
+    "contextLossRecovery": "webglcontextlost must surface a recoverable state and webglcontextrestored must rebuild the scene without stale overlays (Phase 35 browser test)."
+  },
+  "lodPolicy": "Distant LOD remains geometry-derived from the same source parts. A bounding-box proxy is acceptable only as a transient loading placeholder, never as the final visible representation of a selectable structure.",
+  "changelog": [
+    "2026-09-29: threeVendorKB 650->800 across tiers. Reason: Kinesiology Theater (Phase 68) adds lazily-loaded shared three.js helper geometry (GridHelper, Cylinder/Sphere/Circle geometries, hemisphere light). ~90 kB minified / ~23 kB gzip, lazy chunk only; per-tier runtime frame/draw-call/decoded-memory targets unchanged. Documented in docs/PROVENANCE_AUDIT_KINESIOLOGY.md; flagged for human review."
+  ]
+}

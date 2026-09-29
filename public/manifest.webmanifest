@@ -1,0 +1,19 @@
+{
+  "name": "Human Biology Lab",
+  "short_name": "Biology Lab",
+  "description": "Interactive human biology simulations and a touch-ready anatomy atlas.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08111c",
+  "theme_color": "#08111c",
+  "orientation": "any",
+  "categories": ["education", "science"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

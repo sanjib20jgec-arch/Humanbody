@@ -1,0 +1,62 @@
+name: Human Biology Lab verification
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hbl-verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-contracts:
+    name: Static contracts and production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run static verification
+        run: npm run verify
+
+  browser-contracts:
+    name: Chromium browser contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: static-contracts
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium and Linux libraries
+        run: npx playwright install --with-deps chromium
+      - name: Run browser verification
+        run: npm run verify:browser
+      - name: Upload browser diagnostics and visual review frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-diagnostics-${{ github.run_attempt }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14

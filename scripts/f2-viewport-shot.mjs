@@ -1,0 +1,14 @@
+import { chromium, devices } from '@playwright/test';
+
+const browser = await chromium.launch();
+const page = await browser.newPage({ ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } });
+await page.goto('http://127.0.0.1:5173/');
+await page.waitForSelector('[data-hbl-app="true"]');
+await page.locator('.module-list-item').filter({ hasText: 'Circulation' }).click();
+await page.waitForSelector('.reference-object-note', { timeout: 20000 });
+await page.waitForTimeout(4500);
+await page.evaluate(() => document.querySelector('#atlas-search-panel').scrollIntoView({ block: 'center' }));
+await page.waitForTimeout(600);
+await page.screenshot({ path: 'docs/screenshots/shot-f2-viewport.png' });
+await browser.close();
+console.log('done');

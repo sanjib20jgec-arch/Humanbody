@@ -1,0 +1,500 @@
+{
+  "version": 2,
+  "title": "Guided Path teaching-overlay visual review",
+  "status": "pending",
+  "reviewer": null,
+  "updated": "2026-09-29",
+  "scope": [
+    "source-bound structure markers",
+    "route-line alignment",
+    "valve-gradient marker behavior",
+    "occlusion and depth ordering",
+    "contrast and readability",
+    "mobile framing",
+    "reduced-motion behavior",
+    "environment lighting presets (Phase 44)",
+    "ambient occlusion depth shading (Phase 42)",
+    "x-ray ghosting of loaded layers (Phase 47)",
+    "section clipping without implied interior anatomy (Phase 49)",
+    "isolation and solo system views (Phase 52)",
+    "semantic structure index and part selection (Phase 53)",
+    "bookmarks restoring full view state (Phase 56)",
+    "pin-label quiz over loaded parts (Phase 61)",
+    "educational-scale measurement labels (Phase 58)",
+    "muscle contraction pulse overlay (Phase 60)",
+    "ventilation pressure teaching trace (Phase 50)",
+    "reflex conduction timing readout (Phase 55)",
+    "guided tour framing and captions (Phase 48)",
+    "timeline director scrub determinism (Phase 45)",
+    "silhouette LOD distant proxies (Phase 59)"
+  ],
+  "rubric": [
+    {
+      "id": "identity",
+      "criterion": "Each marker resolves to the intended anatomical structure, not a neighboring group."
+    },
+    {
+      "id": "framing",
+      "criterion": "Camera framing and orientation presets show the structure without misleading cropping."
+    },
+    {
+      "id": "orientation",
+      "criterion": "Anterior/lateral/posterior views match the anatomy's true orientation."
+    },
+    {
+      "id": "occlusion",
+      "criterion": "Markers remain readable under layer transparency; hidden targets are not misleadingly implied."
+    },
+    {
+      "id": "contrast",
+      "criterion": "Route lines, markers, and labels are separable from source geometry on the dark background."
+    },
+    {
+      "id": "marker-tightness",
+      "criterion": "Bounds boxes hug the structure without visually exaggerating its size."
+    },
+    {
+      "id": "route-separation",
+      "criterion": "Conceptual routes stay visibly distinct from certified source anatomy."
+    },
+    {
+      "id": "motion",
+      "criterion": "Pulse and marker animation follow the teaching state and never imply source-mesh motion."
+    },
+    {
+      "id": "reduced-motion",
+      "criterion": "Reduced-motion mode provides an equivalent static or stepped explanation."
+    },
+    {
+      "id": "disclosure",
+      "criterion": "Educational and adult-male scope disclosures are visible near the overlay."
+    },
+    {
+      "id": "environment-lighting",
+      "criterion": "Environment lighting changes appearance only; color identity and contrast stay readable."
+    },
+    {
+      "id": "ssao-reading",
+      "criterion": "Ambient occlusion reads as depth, never as cavities, lesions, or internal anatomy."
+    },
+    {
+      "id": "outline-fidelity",
+      "criterion": "Selection outlines hug exact part geometry without implying borders the source lacks."
+    },
+    {
+      "id": "xray-honesty",
+      "criterion": "X-ray mode shows loaded layers only; the visualization-not-imaging disclosure is visible in mode."
+    },
+    {
+      "id": "clipping-honesty",
+      "criterion": "Section views never imply internal parenchyma; the no-implied-anatomy note is visible."
+    },
+    {
+      "id": "isolation-context",
+      "criterion": "Isolated views keep orientation readable and restore cleanly to the full layer state."
+    },
+    {
+      "id": "animation-state-sync",
+      "criterion": "Timeline scrubbing keeps chart, markers, captions, and 3D overlay on one deterministic state."
+    },
+    {
+      "id": "tour-framing",
+      "criterion": "Guided tour steps frame and caption the intended stage at phone and desktop widths."
+    },
+    {
+      "id": "measurement-labeling",
+      "criterion": "Measurement results carry the educational-scale, non-clinical label."
+    }
+  ],
+  "reviewerRecords": [],
+  "reviewerRecordSchema": {
+    "required": [
+      "reviewer",
+      "role",
+      "date",
+      "buildHash",
+      "route",
+      "disposition"
+    ],
+    "dispositions": [
+      "approved",
+      "conditional",
+      "rejected"
+    ]
+  },
+  "routes": [
+    {
+      "id": "circulation",
+      "label": "Circulation",
+      "sourceRegistryId": "heart-macro",
+      "orientations": [
+        "anterior",
+        "lateral",
+        "posterior"
+      ],
+      "viewports": [
+        "desktop",
+        "phone"
+      ],
+      "motionModes": [
+        "normal",
+        "reduced"
+      ],
+      "markers": [
+        "right atrium",
+        "right ventricle",
+        "left atrium",
+        "left ventricle",
+        "mitral valve",
+        "tricuspid valve",
+        "aortic valve",
+        "pulmonary valve"
+      ]
+    },
+    {
+      "id": "digestion",
+      "label": "Digestion",
+      "sourceRegistryId": "digestive-macro",
+      "orientations": [
+        "anterior",
+        "lateral",
+        "posterior"
+      ],
+      "viewports": [
+        "desktop",
+        "phone"
+      ],
+      "motionModes": [
+        "normal",
+        "reduced"
+      ],
+      "markers": [
+        "esophagus",
+        "stomach",
+        "duodenum",
+        "colon"
+      ]
+    }
+  ],
+  "signOff": {
+    "circulation": "pending",
+    "digestion": "pending"
+  },
+  "pendingModeReviews": [
+    {
+      "id": "environment-presets",
+      "phase": 44,
+      "kind": "rendering",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "ssao-depth",
+      "phase": 42,
+      "kind": "rendering",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "xray-ghosting",
+      "phase": 47,
+      "kind": "rendering",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "section-clipping",
+      "phase": 49,
+      "kind": "rendering",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "isolation-solo",
+      "phase": 52,
+      "kind": "interaction",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "structure-index",
+      "phase": 53,
+      "kind": "interaction",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "bookmarks",
+      "phase": 56,
+      "kind": "interaction",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "pin-label-quiz",
+      "phase": 61,
+      "kind": "interaction",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "measurement-labels",
+      "phase": 58,
+      "kind": "interaction",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "contraction-pulse",
+      "phase": 60,
+      "kind": "animation",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "ventilation-trace",
+      "phase": 50,
+      "kind": "animation",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "reflex-timing",
+      "phase": 55,
+      "kind": "animation",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "guided-tour",
+      "phase": 48,
+      "kind": "animation",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "timeline-scrub",
+      "phase": 45,
+      "kind": "interaction",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "silhouette-lod",
+      "phase": 59,
+      "kind": "rendering",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null
+    },
+    {
+      "id": "r5-guided-tour-theming",
+      "phase": "R5",
+      "kind": "ui",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "F1: GuidedTour card, transport buttons, dots now themed (was unstyled default buttons)."
+    },
+    {
+      "id": "r5-certified-line-reserved-row",
+      "phase": "R5",
+      "kind": "ui",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "F2: BODY PARTS3D certification line given its own positioned band; search form offset below \u2014 no shared pixels."
+    },
+    {
+      "id": "r5-error-boundary-fallbacks",
+      "phase": "R5",
+      "kind": "ui",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "F4: atlas-level ErrorBoundary fallback card styling around home atlas + reference objects."
+    },
+    {
+      "id": "r5-rim-desaturation",
+      "phase": "R5",
+      "kind": "rendering",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "G5: rim light desaturated toward cool white and dimmed ~30% across presets."
+    },
+    {
+      "id": "r5-hud-type-floor",
+      "phase": "R5",
+      "kind": "ui",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "G6: 3D HUD/meta strings raised from 7-9px to a 10px floor."
+    },
+    {
+      "id": "r6-lod-crossfade",
+      "phase": "R6",
+      "kind": "rendering",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "G1: silhouette LOD proxies crossfade 250ms with distance hysteresis; cloned proxy materials."
+    },
+    {
+      "id": "r6-section-solid-read",
+      "phase": "R6",
+      "kind": "rendering",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "G2: clipped materials forced near-opaque with depth writes while section plane active."
+    },
+    {
+      "id": "r7-wiggers-calibration",
+      "phase": "R7",
+      "kind": "chart",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "G3: Wiggers chart left/right mmHg rulers, gridlines, cycle ticks; legend moved to DOM."
+    },
+    {
+      "id": "r7-ventilation-rulers",
+      "phase": "R7",
+      "kind": "chart",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "G3/L3: ventilation traces on honest per-trace cmH2O rulers; offset plotting removed; legend external."
+    },
+    {
+      "id": "r7-xray-depth-fade",
+      "phase": "R7",
+      "kind": "rendering",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "G4: x-ray ghost alpha gains distance attenuation for depth ordering."
+    },
+    {
+      "id": "r7-home-fold-composition",
+      "phase": "R7",
+      "kind": "ui",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "G7: hero vertical rhythm reduced so the atlas body enters the first viewport."
+    },
+    {
+      "id": "r7-initial-headroom",
+      "phase": "R7",
+      "kind": "rendering",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "G8: default 3/4 camera fit pulled back ~8% for skull headroom."
+    },
+    {
+      "id": "device-matrix-input-modality",
+      "phase": "DM",
+      "kind": "ui",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "Coarse-pointer touch targets \u226544px, hover-only surfaces removed on touch (iPads/Android tablets included)."
+    },
+    {
+      "id": "device-matrix-tv-10ft",
+      "phase": "DM",
+      "kind": "ui",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "Android TV mode: overscan margins, 48px D-pad targets, high-contrast focus rings, distance-scaled type, conservative render tier."
+    },
+    {
+      "id": "device-matrix-landscape-phone",
+      "phase": "DM",
+      "kind": "ui",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "Landscape handset rhythm compression so the atlas stage stays usable at 393px-tall viewports."
+    },
+    {
+      "id": "device-matrix-ultrawide",
+      "phase": "DM",
+      "kind": "ui",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "\u22651800/\u22652400px layouts use the extra canvas without stretching line lengths."
+    },
+    {
+      "id": "device-matrix-capable-handset-tier",
+      "phase": "DM",
+      "kind": "rendering",
+      "status": "pending",
+      "reviewer": null,
+      "buildHash": null,
+      "note": "Flagship handsets keep the rich render tier; TVs/constrained devices get the conservative one."
+    },
+    {
+      "caseId": "kinesiology-theater-desktop",
+      "description": "Kinesiology Theater: rig, glow, legend, transport on desktop 1440x900",
+      "status": "pending",
+      "queued": "2026-09-29",
+      "reviewer": null
+    },
+    {
+      "caseId": "kinesiology-theater-phone",
+      "description": "Kinesiology Theater: coarse-pointer targets and stacked layout on 393x852",
+      "status": "pending",
+      "queued": "2026-09-29",
+      "reviewer": null
+    },
+    {
+      "caseId": "kinesiology-theater-tv",
+      "description": "Kinesiology Theater: 10-foot mode, 52px controls on 1920x1080 TV UA",
+      "status": "pending",
+      "queued": "2026-09-29",
+      "reviewer": null
+    },
+    {
+      "caseId": "kinesiology-cmu-walk-retarget",
+      "description": "Human review of retargeted CMU walk: foot-slide tolerance, pops",
+      "status": "pending",
+      "queued": "2026-09-29",
+      "reviewer": null
+    },
+    {
+      "caseId": "kinesiology-cmu-jump-retarget",
+      "description": "Human review of retargeted CMU jump window",
+      "status": "pending",
+      "queued": "2026-09-29",
+      "reviewer": null
+    },
+    {
+      "caseId": "kinesiology-disclosures",
+      "description": "Disclosure banner + source badges legibility across presets",
+      "status": "pending",
+      "queued": "2026-09-29",
+      "reviewer": null
+    }
+  ]
+}

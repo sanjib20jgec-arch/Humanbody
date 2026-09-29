@@ -1,0 +1,188 @@
+{
+  "files": [
+    {
+      "file": "10_01.bvh",
+      "sha256": "195d3ab20a3f2bf8315d832301f9989a73b2d06cc834e636c29a442cbdc786f0",
+      "bytes": 1038219,
+      "origin": "CMU Graphics Lab Motion Capture Database via github.com/lawrennd/mocap (BVH conversion)",
+      "license": "CMU classic terms (acknowledgment required; no raw/converted resale)",
+      "joints": 42,
+      "jointNames": [
+        "abdomen",
+        "chest",
+        "neck",
+        "head",
+        "leftEye",
+        "rightEye",
+        "rCollar",
+        "rShldr"
+      ],
+      "frames": 802,
+      "frameTime": 0.00833333
+    },
+    {
+      "file": "10_03.bvh",
+      "sha256": "295a5051780b7d9837d83e2dc270c2a42aa957e712b1c8633fd4cdd75805d43e",
+      "bytes": 474224,
+      "origin": "CMU Graphics Lab Motion Capture Database via github.com/lawrennd/mocap (BVH conversion)",
+      "license": "CMU classic terms (acknowledgment required; no raw/converted resale)",
+      "joints": 42,
+      "jointNames": [
+        "abdomen",
+        "chest",
+        "neck",
+        "head",
+        "leftEye",
+        "rightEye",
+        "rCollar",
+        "rShldr"
+      ],
+      "frames": 363,
+      "frameTime": 0.00833333
+    },
+    {
+      "file": "11_01.bvh",
+      "sha256": "27a35ec189870c7b6d2439b426d405df176780a45293bd7900aefd097f3cbfeb",
+      "bytes": 775179,
+      "origin": "CMU Graphics Lab Motion Capture Database via github.com/lawrennd/mocap (BVH conversion)",
+      "license": "CMU classic terms (acknowledgment required; no raw/converted resale)",
+      "joints": 42,
+      "jointNames": [
+        "abdomen",
+        "chest",
+        "neck",
+        "head",
+        "leftEye",
+        "rightEye",
+        "rCollar",
+        "rShldr"
+      ],
+      "frames": 598,
+      "frameTime": 0.00833333
+    },
+    {
+      "file": "14_06.bvh",
+      "sha256": "e05e17a9edfa989690e528d3bb87311b216a9203ec9c2f0204e16616c21d0486",
+      "bytes": 6873370,
+      "origin": "CMU Graphics Lab Motion Capture Database via github.com/lawrennd/mocap (BVH conversion)",
+      "license": "CMU classic terms (acknowledgment required; no raw/converted resale)",
+      "joints": 42,
+      "jointNames": [
+        "abdomen",
+        "chest",
+        "neck",
+        "head",
+        "leftEye",
+        "rightEye",
+        "rCollar",
+        "rShldr"
+      ],
+      "frames": 5358,
+      "frameTime": 0.00833333
+    },
+    {
+      "file": "14_10.bvh",
+      "sha256": "5f0ae67bd72aae27138824efe2df9bda697c2e85223356ee3290bfa83b79eba4",
+      "bytes": 5448400,
+      "origin": "CMU Graphics Lab Motion Capture Database via github.com/lawrennd/mocap (BVH conversion)",
+      "license": "CMU classic terms (acknowledgment required; no raw/converted resale)",
+      "joints": 42,
+      "jointNames": [
+        "abdomen",
+        "chest",
+        "neck",
+        "head",
+        "leftEye",
+        "rightEye",
+        "rCollar",
+        "rShldr"
+      ],
+      "frames": 4240,
+      "frameTime": 0.00833333
+    },
+    {
+      "file": "14_19.bvh",
+      "sha256": "aebc4a1c0445f284c13e5ac146ee938492e96f64b129fd6899cdd40fb2b18ab1",
+      "bytes": 3514589,
+      "origin": "CMU Graphics Lab Motion Capture Database via github.com/lawrennd/mocap (BVH conversion)",
+      "license": "CMU classic terms (acknowledgment required; no raw/converted resale)",
+      "joints": 42,
+      "jointNames": [
+        "abdomen",
+        "chest",
+        "neck",
+        "head",
+        "leftEye",
+        "rightEye",
+        "rCollar",
+        "rShldr"
+      ],
+      "frames": 2727,
+      "frameTime": 0.00833333
+    },
+    {
+      "file": "Swagger.bvh",
+      "sha256": "c3384294c3a29913c19da051247f015e5e84aabc014cdabeeb3a09b6e7c7d34d",
+      "bytes": 247439,
+      "origin": "CMU Graphics Lab Motion Capture Database via github.com/lawrennd/mocap (BVH conversion)",
+      "license": "CMU classic terms (acknowledgment required; no raw/converted resale)",
+      "joints": 21,
+      "jointNames": [
+        "lowerback",
+        "upperback",
+        "thorax",
+        "neck",
+        "head",
+        "lshoulderjoint",
+        "lhumerus",
+        "lradius"
+      ],
+      "frames": 581,
+      "frameTime": 0.008333
+    },
+    {
+      "file": "Swagger2.bvh",
+      "sha256": "b5e2158c30ba0ec141d332d3ed016113a91dfb9e5f288daf5eaa8e24a8917f09",
+      "bytes": 3848,
+      "origin": "CMU Graphics Lab Motion Capture Database via github.com/lawrennd/mocap (BVH conversion)",
+      "license": "CMU classic terms (acknowledgment required; no raw/converted resale)",
+      "joints": 21,
+      "jointNames": [
+        "lowerback",
+        "upperback",
+        "thorax",
+        "neck",
+        "head",
+        "lshoulderjoint",
+        "lhumerus",
+        "lradius"
+      ],
+      "frames": 1,
+      "frameTime": 0.008333
+    },
+    {
+      "file": "walk_cmu.bvh",
+      "sha256": "3ce192997662c909410bdc3fd84d1050ae646cd2c5776083f61cade2f07c8973",
+      "bytes": 113740,
+      "origin": "Derived embed: trimmed 30fps origin-rebased window of CMU trial 11_01.bvh (via lawrennd/mocap mirror)",
+      "license": "CMU classic terms; transformed derivative embedded in app; acknowledgment shipped",
+      "transform": [
+        "trim",
+        "decimate-to-30fps",
+        "root-rebase"
+      ]
+    },
+    {
+      "file": "jump_cmu.bvh",
+      "sha256": "bee768504f28cea4976bbdecf271abdb74d8ddcf6e57cd3ababba7278e3c153c",
+      "bytes": 87082,
+      "origin": "Derived embed: trimmed 30fps origin-rebased window of CMU trial 14_06.bvh (via lawrennd/mocap mirror)",
+      "license": "CMU classic terms; transformed derivative embedded in app; acknowledgment shipped",
+      "transform": [
+        "trim",
+        "decimate-to-30fps",
+        "root-rebase"
+      ]
+    }
+  ]
+}
