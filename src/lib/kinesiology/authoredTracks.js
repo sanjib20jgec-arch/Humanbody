@@ -77,6 +77,135 @@ export const AUTHORED_ACTIONS = {
       return withIdle(p, t);
     }
   },
+  kick: {
+    duration: 2.4, loop: true, source: 'authored',
+    pose: (t) => {
+      const ph = t % 2.4;
+      const w = smooth(ph, 0.2, 0.6) * (1 - smooth(ph, 0.6, 1.0));
+      const k = smooth(ph, 0.5, 0.9) * (1 - smooth(ph, 1.5, 2.0));
+      const p = {};
+      p.leftUpLeg = { x: -35 * w - 85 * k };
+      p.leftLeg = { x: 80 * w + 10 * k };
+      p.leftFoot = { x: -15 * k };
+      p.rightUpLeg = { x: 8 * k };
+      p.spine = { x: -8 * k + 6 };
+      p.leftUpperArm = { x: 25 * k }; p.rightUpperArm = { x: -35 * k };
+      p.root = { y: -0.04 * k };
+      return withIdle(p, t);
+    }
+  },
+  sidestep: {
+    duration: 2.4, loop: true, source: 'authored',
+    pose: (t) => {
+      const ph = (2 * Math.PI * t) / 2.4;
+      const step = Math.sin(ph);
+      const lift = Math.max(0, Math.sin(ph));
+      const rlift = Math.max(0, -Math.sin(ph));
+      const p = {};
+      p.root = { x: 0.45 * step, y: 0.02 * Math.abs(Math.cos(ph)) };
+      p.leftUpLeg = { z: 16 * lift, x: -4 * lift };
+      p.rightUpLeg = { z: -16 * rlift, x: -4 * rlift };
+      p.leftLeg = { x: 18 * lift }; p.rightLeg = { x: 18 * rlift };
+      p.leftFoot = { x: -8 * lift }; p.rightFoot = { x: -8 * rlift };
+      p.spine = { y: -4 * step };
+      p.leftUpperArm = { x: 12 * rlift }; p.rightUpperArm = { x: 12 * lift };
+      return withIdle(p, t);
+    }
+  },
+  'one-leg': {
+    duration: 3, loop: true, source: 'authored',
+    pose: (t) => {
+      const ph = t % 3;
+      const u = smooth(ph, 0, 0.8) * (1 - smooth(ph, 2.3, 2.9));
+      const p = {};
+      p.rightUpLeg = { x: -35 * u }; p.rightLeg = { x: 50 * u }; p.rightFoot = { x: -12 * u };
+      p.leftUpLeg = { x: -4 * u };
+      p.root = { rz: 5 * u, y: -0.03 * u };
+      p.spine = { rz: -3 * u };
+      p.leftUpperArm = { z: 25 * u }; p.rightUpperArm = { z: -25 * u };
+      return withIdle(p, t);
+    }
+  },
+  'tiptoe-walk': {
+    duration: 2.2, loop: true, source: 'authored',
+    pose: (t) => {
+      const p = gait(t, { period: 1.1, hip: 20, knee: 38, arm: 14, bounce: 0.02, trunk: 5 });
+      p.leftFoot.x += 24; p.rightFoot.x += 24;
+      p.root.y += 0.05;
+      return p;
+    }
+  },
+  'heel-walk': {
+    duration: 2.2, loop: true, source: 'authored',
+    pose: (t) => {
+      const p = gait(t, { period: 1.1, hip: 22, knee: 30, arm: 14, bounce: 0.015, trunk: 3 });
+      p.leftFoot.x -= 20; p.rightFoot.x -= 20;
+      p.leftLeg.x *= 0.6; p.rightLeg.x *= 0.6;
+      return p;
+    }
+  },
+  bow: {
+    duration: 3, loop: true, source: 'authored',
+    pose: (t) => {
+      const ph = t % 3;
+      const b = smooth(ph, 0, 0.9) * (1 - smooth(ph, 1.8, 2.7));
+      const p = {};
+      p.spine = { x: 50 * b };
+      p.head = { x: -18 * b };
+      p.leftUpLeg = { x: -12 * b }; p.rightUpLeg = { x: -12 * b };
+      p.leftLeg = { x: 10 * b }; p.rightLeg = { x: 10 * b };
+      p.leftUpperArm = { x: -8 * b }; p.rightUpperArm = { x: -8 * b };
+      return withIdle(p, t);
+    }
+  },
+  shrug: {
+    duration: 2, loop: true, source: 'authored',
+    pose: (t) => {
+      const s2 = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / 2);
+      const p = {};
+      p.leftClavicle = { x: -14 * s2 }; p.rightClavicle = { x: -14 * s2 };
+      p.leftUpperArm = { z: 6 * s2 }; p.rightUpperArm = { z: -6 * s2 };
+      p.head = { y: 3 * s2 };
+      return withIdle(p, t);
+    }
+  },
+  'reach-up': {
+    duration: 3, loop: true, source: 'authored',
+    pose: (t) => {
+      const ph = t % 3;
+      const r = smooth(ph, 0, 0.9) * (1 - smooth(ph, 2.1, 2.8));
+      const p = {};
+      p.leftUpperArm = { x: -170 * r, z: 8 * r };
+      p.rightUpperArm = { x: -170 * r, z: -8 * r };
+      p.leftForeArm = { x: -12 * r }; p.rightForeArm = { x: -12 * r };
+      p.spine = { x: -6 * r };
+      p.head = { x: -12 * r };
+      return withIdle(p, t);
+    }
+  },
+  clap: {
+    duration: 2, loop: true, source: 'authored',
+    pose: (t) => {
+      const a = Math.abs(Math.sin(2 * Math.PI * 1.5 * t));
+      const p = {};
+      p.leftUpperArm = { x: -35, z: -50 * a + -8 };
+      p.rightUpperArm = { x: -35, z: 50 * a + 8 };
+      p.leftForeArm = { x: -65 }; p.rightForeArm = { x: -65 };
+      return withIdle(p, t);
+    }
+  },
+  'head-signals': {
+    duration: 4, loop: true, source: 'authored',
+    pose: (t) => {
+      const ph = t % 4;
+      const nod = ph < 2 ? Math.sin(2 * Math.PI * 1.2 * ph) : 0;
+      const shake = ph >= 2 ? Math.sin(2 * Math.PI * 1.1 * (ph - 2)) : 0;
+      const p = {};
+      p.head = { x: 18 * nod, y: 24 * shake };
+      p.spine = { x: 3 * nod };
+      return withIdle(p, t);
+    }
+  },
   wave: {
     duration: 3, loop: true, source: 'authored',
     pose: (t) => {
@@ -148,3 +277,35 @@ export function applyAuthoredPose(rig, poseMap) {
     b.rotation.set((rot.x || 0) * D2R, (rot.y || 0) * D2R, (rot.z || 0) * D2R);
   }
 }
+
+
+// Phase 92 (C6/D7): clinical comparison patterns — exaggerated teaching
+// caricatures rendered as a translucent ghost beside the captured normal gait.
+// Explicitly NOT diagnostic; mapped to Kinesiology II pathology introductions.
+export const CLINICAL_PATTERNS = [
+  {
+    id: 'trendelenburg',
+    label: 'Trendelenburg-style drop (caricature)',
+    pose: (t) => {
+      const p = gait(t, { period: 1.1, hip: 26, knee: 46, arm: 16, bounce: 0.016, trunk: 4 });
+      const ph = (2 * Math.PI * t) / 1.1;
+      const stanceL = Math.max(0, Math.sin(ph));
+      p.root.rz = (p.root.rz || 0) + 7 * stanceL;
+      p.spine.y = (p.spine.y || 0) - 5 * stanceL;
+      return p;
+    }
+  },
+  {
+    id: 'antalgic',
+    label: 'Antalgic-style short stance (caricature)',
+    pose: (t) => {
+      const p = gait(t, { period: 1.1, hip: 22, knee: 40, arm: 14, bounce: 0.012, trunk: 6 });
+      const ph = (2 * Math.PI * t) / 1.1;
+      const L = Math.max(0, Math.sin(ph));
+      p.leftUpLeg.x *= 1 - 0.35 * L;
+      p.leftLeg.x *= 1 - 0.3 * L;
+      p.root.y *= 0.7;
+      return p;
+    }
+  }
+];

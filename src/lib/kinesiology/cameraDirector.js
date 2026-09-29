@@ -15,7 +15,8 @@ const FULL = { x: 0, y: 0.92, z: 0 };
 // Phase 79: action-aware framing — face/hand actions frame tighter and higher.
 const FRAMES = {
   walk: { y: 0.92, d: 4.9 }, run: { y: 1.0, d: 5.4 }, jump: { y: 1.1, d: 5.8 },
-  wave: { y: 1.35, d: 3.7 }, handshake: { y: 1.25, d: 3.5 }, chew: { y: 1.62, d: 2.7 }, talk: { y: 1.62, d: 2.7 }
+  wave: { y: 1.35, d: 3.7 }, handshake: { y: 1.25, d: 3.5 }, chew: { y: 1.62, d: 2.7 }, talk: { y: 1.62, d: 2.7 },
+  squat: { y: 0.8, d: 4.2 }, 'sit-stand': { y: 0.85, d: 4.2 }, lunge: { y: 0.95, d: 4.4 }, kick: { y: 1, d: 4.2 }, sidestep: { y: 0.95, d: 4.6 }, 'one-leg': { y: 1.05, d: 4 }, 'tiptoe-walk': { y: 0.98, d: 4.2 }, 'heel-walk': { y: 0.98, d: 4.2 }, bow: { y: 1, d: 4 }, shrug: { y: 1.45, d: 2.8 }, 'reach-up': { y: 1.2, d: 3.4 }, clap: { y: 1.3, d: 3 }, 'head-signals': { y: 1.6, d: 2.4 }
 };
 
 export function cameraStateFor(presetId, t, reducedMotion, actionId) {
