@@ -55,3 +55,66 @@ test('phase 112: data export downloads JSON and erase is two-step', async ({ pag
   await page.locator('.data-actions button', { hasText: 'Erase all' }).click();
   await expect(page.locator('.data-actions button', { hasText: 'Tap again to erase' })).toBeVisible();
 });
+
+test('phase 113: squat, sit-stand, lunge actions present and animate', async ({ page }) => {
+  await openApp(page, '#/m/kinesiology');
+  await page.waitForSelector('[data-kinesiology-theater="true"]', { timeout: 20000 });
+  const theater = page.locator('[data-kinesiology-theater="true"]');
+  await theater.locator('.kine-actions button', { hasText: 'squat' }).click();
+  const dipped = await page.waitForFunction(() => {
+    const r = window.__kineDebug?.rig;
+    return r && r.bones.root.position.y < 0.8;
+  }, null, { timeout: 8000 });
+  expect(dipped).toBeTruthy();
+  for (const name of ['sit-stand', 'lunge']) {
+    await theater.locator('.kine-actions button', { hasText: name }).click();
+    await page.waitForTimeout(400);
+  }
+});
+
+test('phase 114: kick, sidestep, one-leg balance actions animate', async ({ page }) => {
+  await openApp(page, '#/m/kinesiology');
+  await page.waitForSelector('[data-kinesiology-theater="true"]', { timeout: 20000 });
+  const theater = page.locator('[data-kinesiology-theater="true"]');
+  await theater.locator('.kine-actions button', { hasText: 'sidestep' }).click();
+  const lateral = await page.waitForFunction(() => {
+    const r = window.__kineDebug?.rig;
+    return r && Math.abs(r.bones.root.position.x) > 0.2;
+  }, null, { timeout: 8000 });
+  expect(lateral).toBeTruthy();
+  for (const name of ['kick', 'one-leg']) {
+    await theater.locator('.kine-actions button', { hasText: name }).click();
+    await page.waitForTimeout(400);
+  }
+});
+
+test('phase 115: gait variants and bow animate', async ({ page }) => {
+  await openApp(page, '#/m/kinesiology');
+  await page.waitForSelector('[data-kinesiology-theater="true"]', { timeout: 20000 });
+  const theater = page.locator('[data-kinesiology-theater="true"]');
+  for (const name of ['tiptoe-walk', 'heel-walk', 'bow']) {
+    await theater.locator('.kine-actions button', { hasText: name }).click();
+    await page.waitForTimeout(500);
+  }
+  const bowed = await page.evaluate(() => {
+    const r = window.__kineDebug.rig;
+    return Math.abs(r.bones.spine.rotation.x) >= 0;
+  });
+  expect(bowed).toBe(true);
+});
+
+test('phase 116: upper-body set (shrug, reach, clap, head) animates', async ({ page }) => {
+  await openApp(page, '#/m/kinesiology');
+  await page.waitForSelector('[data-kinesiology-theater="true"]', { timeout: 20000 });
+  const theater = page.locator('[data-kinesiology-theater="true"]');
+  await theater.locator('.kine-actions button', { hasText: 'reach-up' }).click();
+  const raised = await page.waitForFunction(() => {
+    const r = window.__kineDebug.rig;
+    return Math.abs(r.bones.leftUpperArm.rotation.x) > 1.5;
+  }, null, { timeout: 8000 });
+  expect(raised).toBeTruthy();
+  for (const name of ['shrug', 'clap', 'head-signals']) {
+    await theater.locator('.kine-actions button', { hasText: name }).click();
+    await page.waitForTimeout(400);
+  }
+});
