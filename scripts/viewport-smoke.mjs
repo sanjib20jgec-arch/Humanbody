@@ -1,4 +1,5 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { decideGestureAxis } from '../src/lib/gestureArbitration.js';
 
 const [styles, app, atlas, infoPanel, controls, deviceProfile] = await Promise.all([
@@ -38,8 +39,25 @@ check('global horizontal overflow is guarded', styles.includes('html,body,#root'
 // between the canvas and the viewport. overflow:hidden on an ancestor creates
 // one (its computed overflow-y becomes auto), so every element on that chain
 // must clip instead: .body-map-stage, #root, body, html, .app-shell.
-check('root elements clip horizontally without becoming scroll containers', styles.includes('overflow-x:hidden;overflow-x:clip') && styles.includes('overflow-x: hidden; overflow-x: clip;'));
-check('atlas stage clips instead of becoming a scroll container', styles.includes('overflow: hidden; overflow: clip;') && !/\.body-map-stage \{[^}]*overflow: hidden; \}/.test(styles));
+// The fallback must stay in a separate @supports rule — a minifier collapses
+// two overflow declarations in one rule down to the last one, which would
+// silently drop the fallback older WebViews depend on.
+check('root elements clip horizontally without becoming scroll containers', styles.includes('html,body,#root{max-width:100%;overflow-x:hidden;') && styles.includes('@supports (overflow: clip){html,body,#root{overflow-x:clip;}}') && styles.includes('#root { max-width: 100%; overflow-x: hidden; }') && styles.includes('@supports (overflow: clip) { html, body, #root { overflow-x: clip; } }'));
+check('atlas stage clips instead of becoming a scroll container', styles.includes('.body-map-stage { position: relative; flex: 1; min-height: 505px; margin: 15px 0; overflow: hidden;') && styles.includes('@supports (overflow: clip) { .body-map-stage { overflow: clip; } }'));
+// Guard the built artifact too: this is where the collapsed fallback was found.
+// Only the read is allowed to fail (dist is absent when this runs standalone);
+// a genuine error inside check() must not be swallowed here.
+const builtAssetDir = resolve(process.cwd(), 'dist/assets');
+let builtStyles = null;
+try {
+  const cssFile = (await readdir(builtAssetDir)).find((name) => name.endsWith('.css'));
+  if (cssFile) builtStyles = await readFile(resolve(builtAssetDir, cssFile), 'utf8');
+} catch {
+  console.warn('viewport smoke: dist/assets not readable, skipping built-stylesheet check');
+}
+if (builtStyles) {
+  check('built stylesheet keeps the overflow: clip fallbacks', builtStyles.includes('overflow-x:hidden') && builtStyles.includes('overflow-x:clip') && builtStyles.includes('overflow:clip'));
+}
 check('app shell leaves vertical scrolling to the document', styles.includes('overflow-x: clip') && !styles.includes('.app-shell { min-height: 100vh; min-height: 100dvh; background: linear-gradient(180deg, rgba(8,17,28,.82), rgba(5,11,19,.98)); overflow: hidden; }'));
 check('atlas preserves vertical page scrolling over the 3D canvas', styles.includes('body-3d-mount {') && styles.includes('body-3d-canvas {') && styles.includes('touch-action: pan-y') && atlas.includes("renderer.domElement.style.touchAction = 'pan-y'") && atlas.includes('onWheelPageScroll') && !atlas.includes('event.preventDefault();\n      const nextYaw'));
 // Touch gestures must be arbitrated by axis before any model control engages.
