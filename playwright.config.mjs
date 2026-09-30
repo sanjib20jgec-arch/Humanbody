@@ -7,7 +7,9 @@ export default defineConfig({
   // serializing workers keeps the software-renderer test runs stable.
   workers: 1,
   timeout: 45_000,
-  expect: { timeout: 8_000 },
+  // Phase 118 (R9): this CI box is 2 cores / 2 GB with SwiftShader GL; the old
+  // 8 s expect budget flaked under suite-level load (unrelated modules failed).
+  expect: { timeout: 15_000 },
   reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'line',
   use: {
     baseURL: 'http://127.0.0.1:5173',

@@ -1914,6 +1914,15 @@ body.ff-tv .kine-stage { min-height: 62vh; }
   .kine-side > .kine-block:first-child { grid-column: 1 / -1; }
 }
 
+/* Phase 118 (R9): Android / handset ergonomics */
+.kine-stage canvas { touch-action: none; } /* orbit drags must not scroll the page */
+.kine-actions button, .kine-cameras button, .kine-speeds button, .kine-viewbar button, .kine-play, .kine-tool, .kine-term button, .guided-path-steps button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+.kine-actions, .kine-tools, .guided-path-steps { overscroll-behavior-x: contain; }
+@media (max-width: 640px) {
+  .kine-stage { min-height: 44dvh; max-height: 62dvh; }
+  .kine-transport { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+}
+
 /* Phase 93 */
 .kine-overlay { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; touch-action: none; }
 .kine-stage { position: relative; }

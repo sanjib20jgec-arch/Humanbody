@@ -53,7 +53,13 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   const [annotate, setAnnotate] = useState(false);
   const [selfCompare, setSelfCompare] = useState(false);
   const [trails, setTrails] = useState(true);
-  const [quality, setQuality] = useState(() => (typeof localStorage !== 'undefined' && localStorage.getItem('kine-quality')) || 'auto');
+  const [quality, setQuality] = useState(() => {
+    try { const saved = localStorage.getItem('kine-quality'); if (saved) return saved; } catch {}
+    // Phase 118 (R9): non-flagship handsets start on the fast tier — full
+    // antialiasing + soft shadows + 2x DPR stutters on mid-range Android GPUs.
+    if (typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches && (navigator.hardwareConcurrency || 4) < 8) return 'fast';
+    return 'auto';
+  });
   const [markersOn, setMarkersOn] = useState(false);
   const [heatMode, setHeatMode] = useState(false);
   const [camError, setCamError] = useState(null);
@@ -202,12 +208,12 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     const profile = getDeviceProfile();
     // Phase 96/101: user quality override ('cinema' forces full-fidelity stage).
     // Phase 101 (V6): explicit quality tier with device-aware auto.
-    const low = quality === 'cinema' ? false : (quality === 'fast' ? true : (profile.lowPower || profile.formFactor === 'tv'));
+    const low = quality === 'cinema' ? false : (quality === 'fast' ? true : (profile.lowPower || profile.formFactor === 'tv' || (profile.formFactor === 'phone' && !profile.capable)));
     let renderer;
     try { renderer = new THREE.WebGLRenderer({ antialias: !low, powerPreference: 'default' }); }
     catch { setNoWebGL(true); return undefined; }
     if (!renderer.getContext()) { setNoWebGL(true); return undefined; }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, low ? 1 : 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, low ? 1 : (profile.formFactor === 'phone' ? 1.5 : 2))); // Phase 118 (R9): DPR cap on handsets
     renderer.setSize(mount.clientWidth, mount.clientHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping; // Phase 96 (V1): filmic grade
     renderer.toneMappingExposure = 1.12;
@@ -447,7 +453,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         c.ys.push(com.y);
         if (c.ys.length > 160) c.ys.shift();
         if (c.ys.length > 60) c.vert = Math.round((Math.max(...c.ys) - Math.min(...c.ys)) * 100);
-        if (comLineRef.current) {
+        if (comLineRef.current && c.trail.length > 1) {
           comLineRef.current.geometry.setFromPoints(c.trail);
           comLineRef.current.geometry.attributes.position.needsUpdate = true;
         }
@@ -547,7 +553,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
             const last = tl.pts[tl.pts.length - 1];
             if (tl.frame % 3 === 0 && (!last || last.distanceToSquared(wp) > 1e-6)) tl.pts.push(wp);
             if (tl.pts.length > 110) tl.pts.shift();
-            tl.line.geometry.setFromPoints(tl.pts);
+            if (tl.pts.length > 1) tl.line.geometry.setFromPoints(tl.pts);
           }
         }
       }

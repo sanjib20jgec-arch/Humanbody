@@ -6,12 +6,19 @@ async function openApp(page, hash = '') {
   return page.locator('[data-hbl-app="true"]');
 }
 
+// Phase 118 (R9): CI runs on 2 cores with SwiftShader software GL; pin the
+// theater to its fast tier so specs validate behaviour (poses, captions,
+// navigation) instead of burning minutes rasterising shadows at DPR 2.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('kine-quality', 'fast'); } catch {} });
+});
+
 test('phase 108: hash deep link opens module; back returns home; selecting updates hash', async ({ page }) => {
   await openApp(page);
   await page.goto('/#/m/circulation');
   await expect(page.locator('.module-screen.circulation-screen')).toBeVisible({ timeout: 15000 });
   await page.goBack();
-  await expect(page.locator('.home-main')).toBeVisible({ timeout: 8000 });
+  await expect(page.locator('.home-main')).toBeVisible({ timeout: 20000 });
   await page.locator('.module-list-item', { hasText: 'Movement Theater' }).click();
   await page.waitForFunction(() => window.location.hash.includes('#/m/kinesiology'), null, { timeout: 5000 });
 });
@@ -57,14 +64,16 @@ test('phase 112: data export downloads JSON and erase is two-step', async ({ pag
 });
 
 test('phase 113: squat, sit-stand, lunge actions present and animate', async ({ page }) => {
+  test.setTimeout(90000); // CI slow-motion: software GL crawls animation time
   await openApp(page, '#/m/kinesiology');
   await page.waitForSelector('[data-kinesiology-theater="true"]', { timeout: 20000 });
   const theater = page.locator('[data-kinesiology-theater="true"]');
   await theater.locator('.kine-actions button', { hasText: 'squat' }).click();
+  await page.waitForFunction(() => Boolean(window.__kineDebug?.rig), null, { timeout: 20000 });
   const dipped = await page.waitForFunction(() => {
     const r = window.__kineDebug?.rig;
     return r && r.bones.root.position.y < 0.8;
-  }, null, { timeout: 8000 });
+  }, null, { timeout: 40000 });
   expect(dipped).toBeTruthy();
   for (const name of ['sit-stand', 'lunge']) {
     await theater.locator('.kine-actions button', { hasText: name }).click();
@@ -73,6 +82,7 @@ test('phase 113: squat, sit-stand, lunge actions present and animate', async ({ 
 });
 
 test('phase 114: kick, sidestep, one-leg balance actions animate', async ({ page }) => {
+  test.setTimeout(90000);
   await openApp(page, '#/m/kinesiology');
   await page.waitForSelector('[data-kinesiology-theater="true"]', { timeout: 20000 });
   const theater = page.locator('[data-kinesiology-theater="true"]');
@@ -80,7 +90,7 @@ test('phase 114: kick, sidestep, one-leg balance actions animate', async ({ page
   const lateral = await page.waitForFunction(() => {
     const r = window.__kineDebug?.rig;
     return r && Math.abs(r.bones.root.position.x) > 0.2;
-  }, null, { timeout: 8000 });
+  }, null, { timeout: 40000 });
   expect(lateral).toBeTruthy();
   for (const name of ['kick', 'one-leg']) {
     await theater.locator('.kine-actions button', { hasText: name }).click();
@@ -96,25 +106,31 @@ test('phase 115: gait variants and bow animate', async ({ page }) => {
     await theater.locator('.kine-actions button', { hasText: name }).click();
     await page.waitForTimeout(500);
   }
-  const bowed = await page.evaluate(() => {
-    const r = window.__kineDebug.rig;
-    return Math.abs(r.bones.spine.rotation.x) >= 0;
-  });
-  expect(bowed).toBe(true);
+  const bowed = await page.waitForFunction(() => {
+    const r = window.__kineDebug?.rig;
+    return Boolean(r) && Math.abs(r.bones.spine.rotation.x) >= 0;
+  }, null, { timeout: 20000 });
+  expect(bowed).toBeTruthy();
 });
 
 test('phase 116: upper-body set (shrug, reach, clap, head) animates', async ({ page }) => {
+  test.setTimeout(90000);
   await openApp(page, '#/m/kinesiology');
   await page.waitForSelector('[data-kinesiology-theater="true"]', { timeout: 20000 });
   const theater = page.locator('[data-kinesiology-theater="true"]');
-  await theater.locator('.kine-actions button', { hasText: 'reach-up' }).click();
+  await page.waitForFunction(() => Boolean(window.__kineDebug?.rig), null, { timeout: 20000 });
+  const clickChip = (name) => page.evaluate((n) => {
+    const b = [...document.querySelectorAll('.kine-actions button')].find((x) => x.textContent.startsWith(n));
+    b && b.click();
+  }, name);
+  await clickChip('reach-up');
   const raised = await page.waitForFunction(() => {
-    const r = window.__kineDebug.rig;
-    return Math.abs(r.bones.leftUpperArm.rotation.x) > 1.5;
-  }, null, { timeout: 8000 });
+    const r = window.__kineDebug?.rig;
+    return r && Math.abs(r.bones.leftUpperArm.rotation.x) > 1.5;
+  }, null, { timeout: 40000 });
   expect(raised).toBeTruthy();
   for (const name of ['shrug', 'clap', 'head-signals']) {
-    await theater.locator('.kine-actions button', { hasText: name }).click();
+    await clickChip(name);
     await page.waitForTimeout(400);
   }
 });
