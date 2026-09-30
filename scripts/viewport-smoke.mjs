@@ -34,6 +34,12 @@ check('device profile layer stamps classes pre-paint', deviceProfile.includes('a
 check('tv forces conservative render tier', atlas.includes('deviceProfile.isTV'));
 check('global splash cannot block the initial shell', !app.includes('function LoadingScreen') && !app.includes('INITIALIZING BIOLOGY LAB') && !app.includes('setTimeout(() => setLoading(false), 1250)'));
 check('global horizontal overflow is guarded', styles.includes('html,body,#root') && styles.includes('overflow-x:hidden'));
+// A vertical touch pan only reaches the document if no scroll container sits
+// between the canvas and the viewport. overflow:hidden on an ancestor creates
+// one (its computed overflow-y becomes auto), so every element on that chain
+// must clip instead: .body-map-stage, #root, body, html, .app-shell.
+check('root elements clip horizontally without becoming scroll containers', styles.includes('overflow-x:hidden;overflow-x:clip') && styles.includes('overflow-x: hidden; overflow-x: clip;'));
+check('atlas stage clips instead of becoming a scroll container', styles.includes('overflow: hidden; overflow: clip;') && !/\.body-map-stage \{[^}]*overflow: hidden; \}/.test(styles));
 check('app shell leaves vertical scrolling to the document', styles.includes('overflow-x: clip') && !styles.includes('.app-shell { min-height: 100vh; min-height: 100dvh; background: linear-gradient(180deg, rgba(8,17,28,.82), rgba(5,11,19,.98)); overflow: hidden; }'));
 check('atlas preserves vertical page scrolling over the 3D canvas', styles.includes('body-3d-mount {') && styles.includes('body-3d-canvas {') && styles.includes('touch-action: pan-y') && atlas.includes("renderer.domElement.style.touchAction = 'pan-y'") && atlas.includes('onWheelPageScroll') && !atlas.includes('event.preventDefault();\n      const nextYaw'));
 // Touch gestures must be arbitrated by axis before any model control engages.
