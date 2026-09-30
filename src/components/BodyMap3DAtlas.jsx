@@ -204,7 +204,13 @@ export default function BodyMap3DAtlas({ onSelect, visited = {}, onAnatomySelect
     scene.fog = new THREE.Fog(0x08131e, 3.8, 8.2);
     const camera = new THREE.PerspectiveCamera(34, 1, 0.005, 100);
     camera.position.copy(defaultCamera);
+    // OrbitControls disables native touch scrolling when it is constructed.
+    // Keep vertical gestures available to the page; the atlas still handles
+    // horizontal drags and pinch gestures below.
+    const onWheelPageScroll = (event) => { event.stopImmediatePropagation(); };
+    renderer.domElement.addEventListener('wheel', onWheelPageScroll);
     const controls = new OrbitControls(camera, renderer.domElement);
+    renderer.domElement.style.touchAction = 'pan-y';
     controlsRef.current = controls;
     controls.target.set(0, 0.86, 0);
     // Camera orbiting makes the body feel like it is sliding around an
@@ -415,7 +421,9 @@ export default function BodyMap3DAtlas({ onSelect, visited = {}, onAnatomySelect
     };
     const onModelPointerMove = (event) => {
       if (!rotationPointer || rotationPointer.id !== event.pointerId || activePointers.size !== 1) return;
-      event.preventDefault();
+      // Do not cancel pointer movement here. With touch-action: pan-y, the
+      // browser owns vertical swipes for page scrolling while this handler
+      // remains responsible for horizontal atlas rotation.
       const nextYaw = rotationPointer.yaw + (event.clientX - rotationPointer.x) * 0.008;
       // Phase 62: track angular velocity for inertial glide after release.
       const now = performance.now();
@@ -594,6 +602,7 @@ export default function BodyMap3DAtlas({ onSelect, visited = {}, onAnatomySelect
       renderer.domElement.removeEventListener('pointermove', onModelPointerMove);
       renderer.domElement.removeEventListener('pointerup', onModelPointerUp);
       renderer.domElement.removeEventListener('pointercancel', onModelPointerUp);
+      renderer.domElement.removeEventListener('wheel', onWheelPageScroll);
       renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
       renderer.domElement.removeEventListener('webglcontextrestored', onContextRestored);
       controls.dispose();
