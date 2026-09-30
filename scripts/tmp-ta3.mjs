@@ -1,0 +1,16 @@
+import { chromium, devices } from 'playwright';
+const browser = await chromium.launch();
+const ctx = await browser.newContext({ ...devices['Pixel 7'] });
+const page = await ctx.newPage();
+await page.goto('http://127.0.0.1:8123/movement-theater.html#/m/kinesiology', { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('.kine-actions', { timeout: 30000 });
+await page.locator('.kine-stage').scrollIntoViewIfNeeded();
+await page.waitForTimeout(400);
+const rail = await page.locator('.kine-actions').first().boundingBox();
+const client = await ctx.newCDPSession(page);
+const y0 = await page.evaluate(() => window.scrollY);
+await client.send('Input.synthesizeScrollGesture', { x: Math.round(rail.x + 100), y: Math.round(rail.y + 200), xDistance: 0, yDistance: -300, speed: 800 });
+await page.waitForTimeout(600);
+const y1 = await page.evaluate(() => window.scrollY);
+console.log(JSON.stringify({ overContentDelta: y1 - y0 }));
+await browser.close();

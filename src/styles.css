@@ -1915,7 +1915,9 @@ body.ff-tv .kine-stage { min-height: 62vh; }
 }
 
 /* Phase 118 (R9): Android / handset ergonomics */
-.kine-stage canvas { touch-action: none; } /* orbit drags must not scroll the page */
+/* R12: pan-y keeps native vertical page scrolling alive when the finger starts
+   on the figure; horizontal drags still orbit, pinch still dollies. */
+.kine-stage canvas { touch-action: pan-y; }
 .kine-touch-hint { display: none; }
 @media (pointer: coarse) {
   .kine-touch-hint { display: block; position: absolute; top: 10px; right: 10px; z-index: 3; padding: 4px 9px; border-radius: 999px; border: 1px solid rgba(77, 216, 223, 0.4); background: rgba(7, 16, 25, 0.72); color: #bdf3f7; font: 10px var(--mono); letter-spacing: 0.05em; pointer-events: none; }

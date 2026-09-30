@@ -363,6 +363,11 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
       stateRef.current.clipsMeta = Object.fromEntries(Object.entries(parsed).map(([k, v]) => [k, { frames: v.bvh.frames, frameTime: v.bvh.frameTime }]));
     }
 
+    // R12: mouse wheel must keep scrolling the PAGE, not zoom the camera —
+    // registered before OrbitControls so it wins the wheel event (pinch on
+    // touch still dollies).
+    const onWheelPageScroll = (e) => { e.stopImmediatePropagation(); };
+    renderer.domElement.addEventListener('wheel', onWheelPageScroll);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, 1.02, 0);
     controls.enableDamping = true;
@@ -371,6 +376,10 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     controls.enabled = true;
     // Phase 119 (R10): explicit touch mapping — one finger orbits, two dolly/pan.
     controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+    // R12: OrbitControls forces touch-action:none inline, which kills native
+    // page scrolling when the swipe starts on the figure. pan-y restores
+    // vertical scrolling; horizontal drags orbit, pinch dollies.
+    renderer.domElement.style.touchAction = 'pan-y';
     const onGrab = () => { orbitRef.current = true; };
     renderer.domElement.addEventListener('pointerdown', onGrab);
 
@@ -663,6 +672,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
       window.removeEventListener('resize', onResize);
       renderer.domElement.removeEventListener('pointerdown', onPick);
       renderer.domElement.removeEventListener('pointerdown', onGrab);
+      renderer.domElement.removeEventListener('wheel', onWheelPageScroll);
       renderer.domElement.removeEventListener('webglcontextlost', onCtxLost);
       renderer.domElement.removeEventListener('webglcontextrestored', onCtxRestored);
       controls.dispose();
@@ -854,7 +864,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         <canvas ref={(el) => { overlayRef.current = el; if (el) { el.width = 1050; el.height = 650; } }} className="kine-overlay" style={{ pointerEvents: annotate ? 'auto' : 'none' }} aria-label="Annotation overlay"
           onPointerDown={(e) => { const r = e.currentTarget.getBoundingClientRect(); const stroke = { t: stateRef.current.time, pts: [[(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]] }; strokesRef.current.push(stroke); e.currentTarget.setPointerCapture(e.pointerId); }}
           onPointerMove={(e) => { if (e.buttons !== 1) return; const r = e.currentTarget.getBoundingClientRect(); const s2 = strokesRef.current[strokesRef.current.length - 1]; if (s2) s2.pts.push([(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]); }} />
-        <span className="kine-touch-hint" aria-hidden="true">drag to orbit · pinch to zoom</span>
+        <span className="kine-touch-hint" aria-hidden="true">swipe sideways to orbit · pinch to zoom</span>
       </div>}
       <aside className="kine-side">
         <div className="kine-block">
