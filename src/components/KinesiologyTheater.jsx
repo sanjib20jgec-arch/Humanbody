@@ -37,6 +37,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   const meterRefs = useRef({});
   const [actionId, setActionId] = useState('walk');
   const [cameraId, setCameraId] = useState('anterior');
+  const orbitRef = useRef(false); // Phase 119 (R10): user grab temporarily frees any preset camera
   const [showMuscles, setShowMuscles] = useState(true);
   const [selected, setSelected] = useState(null);
   const [noWebGL, setNoWebGL] = useState(false);
@@ -193,6 +194,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   stateRef.current.markersOn = markersOn;
   stateRef.current.heatMode = heatMode;
   qualityRef.current = quality;
+  useEffect(() => { orbitRef.current = false; }, [cameraId]); // Phase 119 (R10): preset tap re-takes the camera
 
   useEffect(() => {
     if (apiRef) apiRef.current = {
@@ -364,7 +366,13 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, 1.02, 0);
     controls.enableDamping = true;
-    controls.enabled = false;
+    // Phase 119 (R10): controls always listen (a user grab on any preset camera
+    // frees it); the frame loop decides who owns the camera — the preset or the user.
+    controls.enabled = true;
+    // Phase 119 (R10): explicit touch mapping — one finger orbits, two dolly/pan.
+    controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+    const onGrab = () => { orbitRef.current = true; };
+    renderer.domElement.addEventListener('pointerdown', onGrab);
 
     let raf = 0;
     let last = performance.now();
@@ -529,8 +537,8 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         const f = Math.max(0.7, Math.min(1, asp / 1.5));
         if (f < 1 && cam.pos) cam.pos = [cam.pos[0] * f, cam.pos[1], cam.pos[2] * f];
       }
-      controls.enabled = Boolean(cam.controls) && viewRef.current !== 'quiz';
-      if (controls.enabled) controls.update();
+      const freeCam = (Boolean(cam.controls) || orbitRef.current) && viewRef.current !== 'quiz';
+      if (freeCam) controls.update();
       else applyCamera(THREE, camera, rig, cam, act.focus);
       // Phase 107 (W8): paused breathing micro-motion (stillness reads alive; reduced-motion ⇒ static).
       const pausedNow = !playRef.current && !reducedMotion;
@@ -626,7 +634,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     renderer.xr.enabled = true; // Phase 94 (E6): optional immersive supplement
     xrRef.current = renderer;
     if (navigator.xr?.isSessionSupported) navigator.xr.isSessionSupported('immersive-vr').then((ok) => setXrAvailable(Boolean(ok))).catch(() => {});
-    if (import.meta.env.DEV) window.__kineDebug = { scene, camera, renderer, rig, THREE, ghost, strokes: strokesRef.current, trails: trailRef.current, markersVisible: () => rigRef.current?.markerGroup?.visible, outlineCount: () => Object.values(rigRef.current?.outlines || {}).filter((o) => o.visible).length, lastDualMode: () => lastDualMode, timeNow: () => stateRef.current.time };
+    if (import.meta.env.DEV) window.__kineDebug = { scene, camera, renderer, rig, THREE, ghost, strokes: strokesRef.current, trails: trailRef.current, markersVisible: () => rigRef.current?.markerGroup?.visible, outlineCount: () => Object.values(rigRef.current?.outlines || {}).filter((o) => o.visible).length, lastDualMode: () => lastDualMode, timeNow: () => stateRef.current.time, controls, orbitOn: () => orbitRef.current };
 
     const raycaster = new THREE.Raycaster();
     const onPick = (event) => {
@@ -654,6 +662,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
       renderer.domElement.removeEventListener('pointerdown', onPick);
+      renderer.domElement.removeEventListener('pointerdown', onGrab);
       renderer.domElement.removeEventListener('webglcontextlost', onCtxLost);
       renderer.domElement.removeEventListener('webglcontextrestored', onCtxRestored);
       controls.dispose();
@@ -845,6 +854,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         <canvas ref={(el) => { overlayRef.current = el; if (el) { el.width = 1050; el.height = 650; } }} className="kine-overlay" style={{ pointerEvents: annotate ? 'auto' : 'none' }} aria-label="Annotation overlay"
           onPointerDown={(e) => { const r = e.currentTarget.getBoundingClientRect(); const stroke = { t: stateRef.current.time, pts: [[(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]] }; strokesRef.current.push(stroke); e.currentTarget.setPointerCapture(e.pointerId); }}
           onPointerMove={(e) => { if (e.buttons !== 1) return; const r = e.currentTarget.getBoundingClientRect(); const s2 = strokesRef.current[strokesRef.current.length - 1]; if (s2) s2.pts.push([(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]); }} />
+        <span className="kine-touch-hint" aria-hidden="true">drag to orbit · pinch to zoom</span>
       </div>}
       <aside className="kine-side">
         <div className="kine-block">
