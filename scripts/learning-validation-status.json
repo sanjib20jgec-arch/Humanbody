@@ -2,7 +2,7 @@
   "version": 1,
   "status": "planned",
   "updated": "2026-09-28",
-  "plan": "LEARNING_VALIDATION_PLAN.md",
+  "plan": "docs/reports/LEARNING_VALIDATION_PLAN.md",
   "studies": [],
   "note": "No learner study has been run. Release claims must not imply measured educational benefit until a study record with participants, tasks, and outcomes is added here."
 }

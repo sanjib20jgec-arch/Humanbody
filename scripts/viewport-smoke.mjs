@@ -33,6 +33,8 @@ check('device profile layer stamps classes pre-paint', deviceProfile.includes('a
 check('tv forces conservative render tier', atlas.includes('deviceProfile.isTV'));
 check('global splash cannot block the initial shell', !app.includes('function LoadingScreen') && !app.includes('INITIALIZING BIOLOGY LAB') && !app.includes('setTimeout(() => setLoading(false), 1250)'));
 check('global horizontal overflow is guarded', styles.includes('html,body,#root') && styles.includes('overflow-x:hidden'));
+check('app shell leaves vertical scrolling to the document', styles.includes('overflow-x: clip') && !styles.includes('.app-shell { min-height: 100vh; min-height: 100dvh; background: linear-gradient(180deg, rgba(8,17,28,.82), rgba(5,11,19,.98)); overflow: hidden; }'));
+check('atlas preserves vertical page scrolling over the 3D canvas', styles.includes('body-3d-mount {') && styles.includes('body-3d-canvas {') && styles.includes('touch-action: pan-y') && atlas.includes("renderer.domElement.style.touchAction = 'pan-y'") && atlas.includes('onWheelPageScroll') && !atlas.includes('event.preventDefault();\n      const nextYaw'));
 check('safe-area insets are wired', styles.includes('safe-area-inset-top') && styles.includes('safe-area-inset-bottom'));
 check('phone layout tokens exist', styles.includes('--mobile-gutter') && styles.includes('--mobile-touch-target'));
 check('modern smartphone layout pass is present', styles.includes('--mobile-card-radius') && styles.includes('height: clamp(360px, 64svh, 520px)') && styles.includes('thumb dock'));

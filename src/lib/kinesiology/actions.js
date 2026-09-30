@@ -23,7 +23,8 @@ export const ACTIONS = [
       { name: 'Rise & roll', until: 0.5, caption: 'Gastrocnemius and soleus hold the heels up and drive push-off on every step; tibialis anterior works to keep the toes from slapping.', ext: 'Walk like the floor is hot - tall and light.' },
       { name: 'Step through', until: 1, caption: 'Calf carries body weight through stance; quads and hip extensors stabilise the knee and trunk.', ext: 'Small quick steps, no wobbling.' }
     ],
-    activations: (t) => ({ ...spread(both('gastrocnemius'), () => 0.8), ...spread(both('soleus'), () => 0.9), ...spread(both('tibialisAnterior'), () => 0.4), ...spread(both('quadriceps'), () => 0.4), erectorSpinae: 0.3 })
+    activations: (t) => ({ ...spread(both('gastrocnemius'), () => 0.8), ...spread(both('soleus'), () => 0.9), ...spread(both('tibialisAnterior'), () => 0.4), ...spread(both('quadriceps'), () => 0.4), erectorSpinae: 0.3 }),
+    roles: { ...spread(both('gastrocnemius'), () => 'PM'), ...spread(both('soleus'), () => 'PM') }
   },
   {
     id: 'heel-walk', source: 'authored', duration: 2.2, loop: true, focus: 'leftLeg',
@@ -31,7 +32,8 @@ export const ACTIONS = [
       { name: 'Heel-first', until: 0.5, caption: 'Tibialis anterior fires hard to hold the toes up; calf is quiet; hamstrings help control the knee.', ext: 'Toes to the sky, roll the foot in.' },
       { name: 'Controlled roll', until: 1, caption: 'Without push-off, hip flexors and quads do extra work to pull the body forward - a classic calf-sparing drill.', ext: 'Slow, deliberate steps.' }
     ],
-    activations: (t) => ({ ...spread(both('tibialisAnterior'), () => 0.9), ...spread(both('quadriceps'), () => 0.5), ...spread(both('hamstrings'), () => 0.4), ...spread(both('iliopsoas'), () => 0.5), ...spread(both('soleus'), () => 0.15) })
+    activations: (t) => ({ ...spread(both('tibialisAnterior'), () => 0.9), ...spread(both('quadriceps'), () => 0.5), ...spread(both('hamstrings'), () => 0.4), ...spread(both('iliopsoas'), () => 0.5), ...spread(both('soleus'), () => 0.15) }),
+    roles: { ...spread(both('tibialisAnterior'), () => 'PM'), ...spread(both('quadriceps'), () => 'SY'), ...spread(both('iliopsoas'), () => 'ST') }
   },
   {
     id: 'bow', source: 'authored', duration: 3, loop: true, focus: 'spine',
@@ -42,7 +44,8 @@ export const ACTIONS = [
     activations: (t) => {
       const d = bump(t, 0, 0.4, 0.9); const u = bump(t, 0.4, 0.9, 1);
       return { ...spread(both('hamstrings'), () => 0.4 + d * 0.5 + u * 0.6), ...spread(both('gluteusMaximus'), () => 0.3 + u * 0.8), erectorSpinae: 0.5 + d * 0.3, rectusAbdominis: 0.35 };
-    }
+    },
+    roles: { ...spread(both('hamstrings'), () => 'PM'), ...spread(both('gluteusMaximus'), () => 'PM'), erectorSpinae: 'ST' }
   },
   {
     id: 'shrug', source: 'authored', duration: 2, loop: true, focus: 'chest',
@@ -68,7 +71,8 @@ export const ACTIONS = [
     phases: [
       { name: 'Open-close', until: 1, caption: 'Pectoralis (simplified via deltoid/trunk coupling here) adducts the arms; biceps hold the elbow fold; rhythm lives in the trunk.', ext: 'Clap to a count of three.' }
     ],
-    activations: (t) => ({ ...spread(both('deltoid'), () => 0.5), ...spread(both('bicepsBrachii'), () => 0.5), ...spread(both('tricepsBrachii'), () => 0.2), rectusAbdominis: 0.25 })
+    activations: (t) => ({ ...spread(both('deltoid'), () => 0.5), ...spread(both('bicepsBrachii'), () => 0.5), ...spread(both('tricepsBrachii'), () => 0.2), rectusAbdominis: 0.25 }),
+    roles: { ...spread(both('deltoid'), () => 'PM'), ...spread(both('bicepsBrachii'), () => 'PM') }
   },
   {
     id: 'head-signals', source: 'authored', duration: 4, loop: true, focus: 'head',
@@ -88,7 +92,8 @@ export const ACTIONS = [
     activations: (t) => {
       const k = bump(t, 0.35, 0.65, 1); const w = bump(t, 0.1, 0.35, 0.7);
       return { ...spread(both('quadriceps'), () => 0.3 + k), ...spread(both('iliopsoas'), () => 0.3 + k * 0.8), ...spread(both('hamstrings'), () => 0.3 + w * 0.5 + bump(t, 0.65, 1, 0.6)), ...spread(both('rectusFemoris'), () => k * 0.8), rectusAbdominis: 0.4, erectorSpinae: 0.35 };
-    }
+    },
+    roles: { ...spread(both('quadriceps'), () => 'PM'), ...spread(both('iliopsoas'), () => 'PM'), ...spread(both('rectusFemoris'), () => 'PM') }
   },
   {
     id: 'sidestep', source: 'authored', duration: 2.4, loop: true, focus: 'leftUpLeg',
@@ -111,7 +116,8 @@ export const ACTIONS = [
     activations: (t) => {
       const u = bump(t, 0, 0.3, 0.8) + bump(t, 0.3, 0.75, 0.6) + bump(t, 0.75, 1, 0.5);
       return { 'gluteusMedius.L': 0.4 + u * 0.6, ...spread(both('quadriceps'), () => 0.3 + u * 0.2), ...spread(both('soleus'), () => 0.3 + u * 0.2), ...spread(both('iliopsoas'), () => u * 0.6), rectusAbdominis: 0.35, erectorSpinae: 0.3 };
-    }
+    },
+    roles: { 'gluteusMedius.L': 'PM' }
   },
   {
     id: 'squat', source: 'authored', duration: 3, loop: true, focus: 'leftLeg',
@@ -123,7 +129,8 @@ export const ACTIONS = [
     activations: (t) => {
       const d = bump(t, 0, 0.4, 0.9) + bump(t, 0.55, 1, 1);
       return { ...spread(both('quadriceps'), () => d), ...spread(both('gluteusMaximus'), () => d * 0.85), ...spread(both('hamstrings'), () => 0.3 + d * 0.4), ...spread(both('soleus'), () => 0.3), erectorSpinae: 0.5, rectusAbdominis: 0.3 };
-    }
+    },
+    roles: { erectorSpinae: 'ST' }
   },
   {
     id: 'sit-stand', source: 'authored', duration: 4, loop: true, focus: 'leftLeg',
