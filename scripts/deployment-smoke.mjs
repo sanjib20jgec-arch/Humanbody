@@ -13,7 +13,7 @@ const packageJson = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8
 const failures = [];
 const check = (name, condition) => { if (!condition) failures.push(name); };
 
-check('service worker has a shell version', /CACHE_VERSION\s*=\s*['"]hbl-shell-v3['"]/.test(serviceWorker));
+check('service worker has a shell version', /CACHE_VERSION\s*=\s*['"]hbl-shell-v4['"]/.test(serviceWorker));
 check('service worker has an independent atlas cache', /MODEL_CACHE\s*=\s*['"]hbl-atlas-bodyparts3d-4-0['"]/.test(serviceWorker));
 check('service worker keeps stale manifest fallback', serviceWorker.includes("url.pathname === '/models/atlas.json'") && serviceWorker.includes('cacheNetworkResponse'));
 check('service worker cleans old HBL caches', serviceWorker.includes("key.startsWith('hbl-')") && serviceWorker.includes('caches.delete'));
