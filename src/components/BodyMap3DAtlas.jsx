@@ -6,6 +6,7 @@ import { Icon } from './Icons';
 import { ANATOMY_LAYERS, getAnatomyMetadataFallback } from '../lib/anatomyLayers';
 import { recordAtlasChunkError, recordAtlasChunkProfile } from '../lib/performance';
 import { ATLAS_CAMERA_PRESETS, ATLAS_LIGHTING_PRESETS, getAtlasLightingPreset, orientationLabelForYaw } from '../lib/atlasFraming';
+import { decideGestureAxis } from '../lib/gestureArbitration';
 const LazyStructureIndexPanel = React.lazy(() => import('./atlasTools').then((m) => ({ default: m.StructureIndexPanel })));
 const LazyBookmarksPanel = React.lazy(() => import('./atlasTools').then((m) => ({ default: m.BookmarksPanel })));
 const LazyAtlasLabelQuiz = React.lazy(() => import('./atlasTools').then((m) => ({ default: m.AtlasLabelQuiz })));
@@ -394,6 +395,25 @@ export default function BodyMap3DAtlas({ onSelect, visited = {}, onAnatomySelect
     let rotationPointer = null;
     const rotationInertia = { velocity: 0, lastX: 0, lastMoveAt: 0 };
     let lastTap = { time: 0, x: 0, y: 0 };
+    // Gesture arbitration. A touch gesture stays undecided until it has
+    // travelled far enough to reveal its dominant axis: horizontal travel
+    // becomes atlas rotation, vertical travel is left entirely to the browser
+    // for native page scrolling. Deciding this before any model control
+    // engages is what stops the canvas from swallowing vertical swipes.
+    // Pointer ids whose gesture was handed to the page instead of the model.
+    // Their release must not register as a tap or a double-tap zoom.
+    const scrollGesturePointers = new Set();
+    const releasePointerCapture = (pointerId) => {
+      if (pointerId == null) return;
+      try {
+        if (renderer.domElement.hasPointerCapture?.(pointerId)) renderer.domElement.releasePointerCapture(pointerId);
+      } catch { /* capture already released */ }
+    };
+    const engageModelInteraction = (capturedPointerId) => {
+      if (capturedPointerId != null) renderer.domElement.setPointerCapture?.(capturedPointerId);
+      setInteractionQuality(true);
+      manager?.setInteractionActive(true);
+    };
     const stopModelInteraction = () => {
       if (activePointers.size) return;
       rotationPointer = null;
@@ -404,23 +424,49 @@ export default function BodyMap3DAtlas({ onSelect, visited = {}, onAnatomySelect
       if (event.pointerType === 'mouse' && event.button !== 0) return;
       activePointers.add(event.pointerId);
       if (activePointers.size !== 1) {
+        // A second finger turns the gesture into pinch/pan, which OrbitControls
+        // owns. Hand back the first pointer so two-finger gestures work.
+        releasePointerCapture(rotationPointer?.id);
         rotationPointer = null;
         return;
       }
       userAdjustedViewRef.current = true;
+      const isMouse = event.pointerType === 'mouse';
       rotationPointer = {
         id: event.pointerId,
         x: event.clientX,
         y: event.clientY,
+        startX: event.clientX,
+        startY: event.clientY,
         yaw: anatomyPivot.rotation.y,
-        pitch: anatomyPivot.rotation.x
+        pitch: anatomyPivot.rotation.x,
+        // A mouse drag is never ambiguous - the page scrolls by wheel - so it
+        // engages immediately. Touch waits for the arbitration step below.
+        axis: isMouse ? 'horizontal' : null
       };
-      renderer.domElement.setPointerCapture?.(event.pointerId);
-      setInteractionQuality(true);
-      manager?.setInteractionActive(true);
+      if (isMouse) engageModelInteraction(event.pointerId);
     };
     const onModelPointerMove = (event) => {
       if (!rotationPointer || rotationPointer.id !== event.pointerId || activePointers.size !== 1) return;
+      if (!rotationPointer.axis) {
+        // Not yet decided: wait until travel reveals which axis the user meant.
+        const axis = decideGestureAxis({
+          dx: event.clientX - rotationPointer.startX,
+          dy: event.clientY - rotationPointer.startY
+        });
+        if (!axis) return;
+        if (axis === 'vertical') {
+          // Vertical intent. The browser owns this gesture: never capture the
+          // pointer and never rotate, so touch-action: pan-y scrolls the page.
+          // Nothing was engaged yet, so there is no model control to unwind.
+          scrollGesturePointers.add(event.pointerId);
+          rotationPointer = null;
+          return;
+        }
+        rotationPointer.axis = 'horizontal';
+        engageModelInteraction(event.pointerId);
+      }
+      if (rotationPointer.axis !== 'horizontal') return;
       // Do not cancel pointer movement here. With touch-action: pan-y, the
       // browser owns vertical swipes for page scrolling while this handler
       // remains responsible for horizontal atlas rotation.
@@ -437,11 +483,21 @@ export default function BodyMap3DAtlas({ onSelect, visited = {}, onAnatomySelect
     };
     const onModelPointerUp = (event) => {
       activePointers.delete(event.pointerId);
+      releasePointerCapture(event.pointerId);
+      const wasScrollGesture = scrollGesturePointers.delete(event.pointerId);
       const wasRotationPointer = rotationPointer?.id === event.pointerId;
       if (wasRotationPointer) {
         rotationPointer = null;
         // Kill inertia if the pointer was idle before release (no fling).
         if (performance.now() - rotationInertia.lastMoveAt > 90) rotationInertia.velocity = 0;
+      }
+      if (wasScrollGesture || event.type === 'pointercancel') {
+        // The gesture belonged to the page (or the browser reclaimed it for
+        // scrolling). Do not let its release seed a tap, otherwise a scroll
+        // ending near an earlier tap would zoom the model.
+        lastTap = { time: 0, x: 0, y: 0 };
+        stopModelInteraction();
+        return;
       }
       // Phase 62: double-tap focuses the current selection, or zooms in.
       const moved = wasRotationPointer ? Math.hypot(event.clientX - rotationInertia.lastX, 0) : 0;

@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { decideGestureAxis } from '../src/lib/gestureArbitration.js';
 
 const [styles, app, atlas, infoPanel, controls, deviceProfile] = await Promise.all([
   readFile('src/styles.css', 'utf8'),
@@ -35,6 +36,19 @@ check('global splash cannot block the initial shell', !app.includes('function Lo
 check('global horizontal overflow is guarded', styles.includes('html,body,#root') && styles.includes('overflow-x:hidden'));
 check('app shell leaves vertical scrolling to the document', styles.includes('overflow-x: clip') && !styles.includes('.app-shell { min-height: 100vh; min-height: 100dvh; background: linear-gradient(180deg, rgba(8,17,28,.82), rgba(5,11,19,.98)); overflow: hidden; }'));
 check('atlas preserves vertical page scrolling over the 3D canvas', styles.includes('body-3d-mount {') && styles.includes('body-3d-canvas {') && styles.includes('touch-action: pan-y') && atlas.includes("renderer.domElement.style.touchAction = 'pan-y'") && atlas.includes('onWheelPageScroll') && !atlas.includes('event.preventDefault();\n      const nextYaw'));
+// Touch gestures must be arbitrated by axis before any model control engages.
+// Capturing the pointer on pointerdown would claim the gesture before the
+// browser can decide it is a page scroll, which defeats touch-action: pan-y.
+const pointerDownHandler = atlas.slice(atlas.indexOf('const onModelPointerDown'), atlas.indexOf('const onModelPointerMove'));
+check('atlas arbitrates touch axis before engaging model controls', atlas.includes('decideGestureAxis(') && atlas.includes("rotationPointer.axis = 'horizontal'") && atlas.includes('if (isMouse) engageModelInteraction(event.pointerId)'));
+check('atlas never captures the pointer before the gesture axis is known', pointerDownHandler.length > 0 && !pointerDownHandler.includes('setPointerCapture'));
+check('atlas hands vertical touch gestures back to the page', atlas.includes("axis === 'vertical'") && atlas.includes('scrollGesturePointers.add(event.pointerId)'));
+check('atlas does not let a page scroll register as a tap', atlas.includes("wasScrollGesture || event.type === 'pointercancel'"));
+// Behavioural checks on the arbitration rule itself, runnable without a browser.
+check('gesture arbitration needs real travel before claiming an axis', decideGestureAxis({ dx: 0, dy: 0 }) === null && decideGestureAxis({ dx: 3, dy: 2 }) === null && decideGestureAxis({ dx: -7, dy: 7 }) === null);
+check('gesture arbitration claims sideways travel for the model', decideGestureAxis({ dx: 24, dy: 4 }) === 'horizontal' && decideGestureAxis({ dx: -24, dy: 4 }) === 'horizontal');
+check('gesture arbitration yields vertical travel to the page', decideGestureAxis({ dx: 4, dy: 24 }) === 'vertical' && decideGestureAxis({ dx: 0, dy: 12 }) === 'vertical');
+check('gesture arbitration sends an ambiguous diagonal to page scrolling', decideGestureAxis({ dx: 12, dy: 12 }) === 'vertical');
 check('safe-area insets are wired', styles.includes('safe-area-inset-top') && styles.includes('safe-area-inset-bottom'));
 check('phone layout tokens exist', styles.includes('--mobile-gutter') && styles.includes('--mobile-touch-target'));
 check('modern smartphone layout pass is present', styles.includes('--mobile-card-radius') && styles.includes('height: clamp(360px, 64svh, 520px)') && styles.includes('thumb dock'));
