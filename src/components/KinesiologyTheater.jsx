@@ -515,6 +515,14 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
       }
 
       const cam = cameraStateFor(st.cameraId, st.time, reducedMotion, st.actionId);
+      // Phase 117 (R8): on square/portrait canvases (phones) the tuned desktop
+      // camera distances leave the figure small; scale horizontal distance with
+      // canvas aspect so the performer fills the frame on small screens.
+      {
+        const asp = mount.clientWidth / Math.max(1, mount.clientHeight);
+        const f = Math.max(0.7, Math.min(1, asp / 1.5));
+        if (f < 1 && cam.pos) cam.pos = [cam.pos[0] * f, cam.pos[1], cam.pos[2] * f];
+      }
       controls.enabled = Boolean(cam.controls) && viewRef.current !== 'quiz';
       if (controls.enabled) controls.update();
       else applyCamera(THREE, camera, rig, cam, act.focus);

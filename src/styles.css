@@ -1742,14 +1742,14 @@ body.ff-tv .primary-cta, body.ff-tv .outline-button { min-height: 52px; font-siz
 .kine-stage::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: radial-gradient(ellipse at 50% 42%, transparent 55%, rgba(4, 9, 16, 0.55) 100%); }
 .kine-stage canvas { display: block; width: 100%; height: 100%; }
 .kine-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.kine-block { border: 1px solid #16283c; border-radius: 12px; padding: 12px; background: rgba(10, 20, 34, 0.7); display: flex; flex-direction: column; gap: 8px; }
-.kine-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.kine-actions button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 9px 10px; min-height: 44px; border-radius: 9px; border: 1px solid #21374f; background: #0d1a2b; color: #dce8f5; font: inherit; font-size: 13px; font-weight: 700; text-transform: capitalize; cursor: pointer; }
+.kine-block { border: 1px solid #16283c; border-radius: 12px; padding: 12px; background: rgba(10, 20, 34, 0.7); display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.kine-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+.kine-actions button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; padding: 9px 10px; min-height: 44px; border-radius: 9px; border: 1px solid #21374f; background: #0d1a2b; color: #dce8f5; font: inherit; font-size: 13px; font-weight: 700; text-transform: capitalize; cursor: pointer; }
 .kine-actions button small { font-size: 10px; color: #7d93ab; font-weight: 500; }
 .kine-actions button.active { border-color: #e879f9; color: #f5d0fe; background: rgba(232, 121, 249, 0.12); }
 .kine-source-badge { font-size: 10.5px; color: #8fa6bd; letter-spacing: 0.04em; }
-.kine-cameras { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.kine-cameras button { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-height: 44px; padding: 8px 10px; border-radius: 9px; border: 1px solid #21374f; background: #0d1a2b; color: #c9d8e8; font: inherit; font-size: 11.5px; cursor: pointer; }
+.kine-cameras { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+.kine-cameras button { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; min-height: 44px; padding: 8px 10px; border-radius: 9px; border: 1px solid #21374f; background: #0d1a2b; color: #c9d8e8; font: inherit; font-size: 11.5px; cursor: pointer; }
 .kine-cameras button kbd { font-size: 9px; border: 1px solid #2b4258; border-radius: 4px; padding: 1px 4px; color: #7d93ab; }
 .kine-cameras button.active { border-color: #4dd8df; color: #c9f6f9; background: rgba(77, 216, 223, 0.1); }
 .kine-toggle { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #c9d8e8; }
@@ -1880,6 +1880,39 @@ body.ff-tv .kine-stage { min-height: 62vh; }
 
 /* Phase 92 */
 .kine-pace { color: #7d93ab; font-size: 10px; }
+
+/* Phase 117 (R8): responsive + perceived-performance polish for Movement Theater */
+.kine-persp-note { grid-column: 1 / -1; min-width: 0; }
+@media (max-width: 640px) {
+  .kine-stage { min-height: 44vh; max-height: 62vh; }
+  /* Action picker becomes a swipeable chip rail directly under the stage */
+  .kine-actions { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+  .kine-actions button { scroll-snap-align: start; min-width: 132px; }
+  /* Stack the side panels two-up so the page stops being 5000px tall */
+  .kine-side { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .kine-side > * { min-width: 0; }
+  .kine-side > .kine-block:first-child { grid-column: 1 / -1; }
+  .kine-cameras { grid-template-columns: 1fr; }
+  .kine-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 280px; }
+  /* Intro cards compress: targets stack, guided path becomes a swipe rail */
+  .objective-strip { grid-template-columns: 1fr; gap: 10px; padding: 12px 14px; }
+  .guided-path { padding: 12px 14px; }
+  .guided-path-steps { display: flex; overflow-x: auto; scrollbar-width: none; }
+  .guided-path-steps::-webkit-scrollbar { display: none; }
+  .guided-path-steps button { flex: 0 0 auto; min-width: 116px; }
+  /* Playback stays within thumb reach at all times */
+  .kine-transport { position: sticky; bottom: 0; z-index: 25; box-shadow: 0 -10px 28px rgba(2, 8, 16, 0.55); }
+  .kine-tools { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .kine-tools .kine-tool, .kine-tools .kine-tool-toggle { flex: 0 0 auto; }
+  .kine-tour { inset: 12px; }
+  .kine-disclosure { font-size: 11px; }
+  .kine-drill, .kine-rehearse, .kine-study-pause { max-width: min(320px, calc(100vw - 24px)); }
+}
+@media (min-width: 641px) and (max-width: 1100px) {
+  .kine-side { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .kine-side > * { min-width: 0; }
+  .kine-side > .kine-block:first-child { grid-column: 1 / -1; }
+}
 
 /* Phase 93 */
 .kine-overlay { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; touch-action: none; }
