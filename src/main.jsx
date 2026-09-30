@@ -4,6 +4,11 @@ import App from './App';
 import { applyDeviceProfileClasses, watchDeviceProfileChanges } from './lib/deviceProfile.js';
 import './styles.css';
 
+// Phase 119 (R11): the offline artifact's boot watchdog (plain-ES5 script in
+// the generated HTML) shows a friendly note if this bundle never evaluates —
+// i.e. the device's browser is too old for the file.
+if (typeof window !== 'undefined') window.__HBL_BOOTED__ = true;
+
 // Android APK pass: flag WebView shells so CSS can adapt (hide web-only PWA affordances).
 if (typeof window !== 'undefined') {
   const ua = navigator.userAgent || '';
