@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 
 const strict = process.argv.includes('--strict');
-const routes = (process.env.HBL_ROUTES || 'home,cell,tissues,digestion,circulation,nervous,respiration,excretion,reproduction').split(',');
+const routes = (process.env.HBL_ROUTES || 'home,cell,tissues,digestion,circulation,nervous,respiration,excretion,reproduction,heredity').split(',');
 const devices = [{ name: 'phone', width: 360, height: 780 }, { name: 'tablet', width: 820, height: 1180 }, { name: 'desktop', width: 1440, height: 900 }];
 const combos = [['dark', 'en'], ['light', 'bn']];
 const exe = process.env.HBL_CHROMIUM;
