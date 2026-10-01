@@ -16,7 +16,7 @@ const [app, data, progress, guidedPathLib, referenceObject, nervous, circulation
   readFile('src/simulations/TissuesLab.jsx', 'utf8')
 ]);
 const checks = [
-  ['guided path data', data.includes("export const guidedPath = ['cell', 'tissues', 'digestion', 'circulation', 'nervous', 'respiration', 'excretion', 'reproduction', 'heredity', 'kinesiology'];")],
+  ['guided path data', data.includes("export const guidedPath = ['cell', 'tissues', 'digestion', 'circulation', 'nervous', 'respiration', 'excretion', 'reproduction', 'heredity', 'evolution', 'environment', 'kinesiology'];")],
   ['guided path metadata', data.includes('export const guidedPathMeta') && data.includes('estimatedMinutes') && data.includes('pathReason')],
   ['guided path recommendation resolver', guidedPathLib.includes('getGuidedRecommendation') && guidedPathLib.includes('getGuidedStepState') && guidedPathLib.includes('CHECKPOINT_PASS_PERCENT')],
   ['last module persistence', progress.includes('lastModule') && progress.includes('lastView')],

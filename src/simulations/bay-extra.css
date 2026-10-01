@@ -1,0 +1,21 @@
+.bay-sim { display: grid; gap: 16px; }
+.bay-sim-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 16px; align-items: center; }
+@media (max-width: 720px) { .bay-sim-grid { grid-template-columns: 1fr; } }
+.moth-field { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; padding: 12px; border-radius: 12px; transition: background 0.4s; }
+.moth-field.clean { background: oklch(0.85 0.02 85); }
+.moth-field.soot { background: oklch(0.32 0.01 85); }
+.moth-field i { aspect-ratio: 1.6; border-radius: 50% 50% 40% 40%; }
+.moth-field i.dark { background: oklch(0.25 0.02 260); }
+.moth-field i.pale { background: oklch(0.96 0.01 90); }
+.bay-chart { width: 100%; height: auto; }
+.bay-chart line { stroke: currentColor; opacity: 0.4; }
+.bay-chart text { font-size: 9px; fill: currentColor; opacity: 0.7; }
+.bay-chart polyline { fill: none; stroke: #f97316; stroke-width: 2.5; }
+.cross-presets button.active { outline: 2px solid currentColor; }
+.energy-pyramid { display: grid; gap: 6px; justify-items: center; }
+.energy-step { width: var(--w); display: flex; justify-content: space-between; gap: 8px; padding: 10px 14px; border-radius: 8px; background: color-mix(in oklch, #22c55e 18%, transparent); border: 1px solid color-mix(in oklch, #22c55e 40%, transparent); opacity: 0.45; transition: opacity 0.3s; }
+.energy-step.revealed { opacity: 1; }
+.bay-concepts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 12px 0; }
+.bay-concepts button { text-align: left; display: grid; gap: 4px; padding: 14px; border-radius: 12px; border: 1px solid color-mix(in oklch, var(--accent) 40%, transparent); background: color-mix(in oklch, var(--accent) 8%, transparent); color: inherit; cursor: pointer; }
+.bay-concepts button.active { border-color: var(--accent); background: color-mix(in oklch, var(--accent) 20%, transparent); }
+.bay-concepts small { opacity: 0.8; }

@@ -13,10 +13,12 @@ const BAYS = [
   { name: 'excretion', packs: '../src/data/excretion/excretionPacks.js', key: 'excretionPacks', builders: '../src/lib/excretion/excretionBuilders.js', min: 4 },
   { name: 'reproduction', packs: '../src/data/reproduction/reproductionPacks.js', key: 'reproductionPacks', builders: '../src/lib/reproduction/reproductionBuilders.js', min: 5, class9Min: 2 },
   { name: 'heredity', packs: '../src/data/heredity/heredityPacks.js', key: 'heredityPacks', builders: '../src/lib/heredity/heredityBuilders.js', min: 4, class9Min: 3 },
+  { name: 'evolution', packs: '../src/data/evolution/evolutionPacks.js', key: 'evolutionPacks', builders: '../src/lib/evolution/evolutionBuilders.js', min: 4 },
+  { name: 'environment', packs: '../src/data/environment/environmentPacks.js', key: 'environmentPacks', builders: '../src/lib/environment/environmentBuilders.js', min: 4 },
 ];
 let n = 0;
 const ok = (c, m) => { assert.ok(c, m); n++; };
-const LATIN_OK = /\b(ATP|ADP|DNA|RNA|mRNA|tRNA|SRY|TT|Tt|tt|F1|F2|XX|XY|XO|YY|bp|nm|SA|AV|ADH|LH|IVF|ZIFT|GIFT|ICSI|PCPNDT|IUD|pO2|pCO2|Hg|mL|L|Ca2|Ca|Na|K|O2|CO2|pH|NCERT|NEET|WBBSE|µm|nm|mm|cm|m|s|ms|3D|A|I|H|Z)\b/g;
+const LATIN_OK = /\b(ATP|ADP|DNA|RNA|mRNA|tRNA|SRY|TT|Tt|tt|F1|F2|XX|XY|XO|YY|bp|UV|CFC|DDT|UNESCO|O₃|K|N|J|S|nm|SA|AV|ADH|LH|IVF|ZIFT|GIFT|ICSI|PCPNDT|IUD|pO2|pCO2|Hg|mL|L|Ca2|Ca|Na|K|O2|CO2|pH|NCERT|NEET|WBBSE|µm|nm|mm|cm|m|s|ms|3D|A|I|H|Z)\b/g;
 function checkBn(text, where) {
   ok(typeof text === 'string' && text.length > 0, `${where}: missing bn`);
   ok(!/[০-৯]/.test(text), `${where}: Bengali digits (D26)`);

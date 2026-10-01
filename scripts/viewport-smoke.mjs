@@ -50,8 +50,8 @@ check('atlas stage clips instead of becoming a scroll container', styles.include
 const builtAssetDir = resolve(process.cwd(), 'dist/assets');
 let builtStyles = null;
 try {
-  const cssFile = (await readdir(builtAssetDir)).find((name) => name.endsWith('.css'));
-  if (cssFile) builtStyles = await readFile(resolve(builtAssetDir, cssFile), 'utf8');
+  const cssFiles = (await readdir(builtAssetDir)).filter((name) => name.endsWith('.css'));
+  if (cssFiles.length) builtStyles = (await Promise.all(cssFiles.map((name) => readFile(resolve(builtAssetDir, name), 'utf8')))).join('\n');
 } catch {
   console.warn('viewport smoke: dist/assets not readable, skipping built-stylesheet check');
 }

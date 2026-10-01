@@ -48,6 +48,16 @@ export const learningObjectives = {
     'Distinguish genes, alleles, genotypes, and phenotypes.',
     'Construct a simple Punnett square.',
     'Use probability to explain expected inheritance rather than certainty.'
+  ],
+  evolution: [
+    'Explain natural selection using variation, inheritance and differential survival.',
+    'Distinguish homologous from analogous organs.',
+    'Describe human evolution as a branching tree with a common ancestor.'
+  ],
+  environment: [
+    'Arrange organisms into trophic levels of a food chain.',
+    'Apply the 10 per cent law to energy flow.',
+    'Explain mangrove adaptations and the role of the ozone layer.'
   ]
 };
 

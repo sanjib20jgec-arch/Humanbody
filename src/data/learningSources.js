@@ -24,6 +24,20 @@ export const CONCEPTUAL_SOURCE_REVIEW = {
     source: { title: 'OpenStax Biology 2e · Characteristics and Traits', url: 'https://openstax.org/books/biology-2e/pages/12-2-characteristics-and-traits', license: 'CC BY 4.0' },
     scope: 'Gene, allele, genotype, phenotype, and simple dominance terminology support the inheritance model.',
     threeDStatus: 'No reviewed 3D source approved; the heredity view is a symbolic information model.'
+  },
+  evolution: {
+    moduleId: 'evolution',
+    label: 'Evolution',
+    source: { title: 'OpenStax Biology 2e · Understanding Evolution', url: 'https://openstax.org/books/biology-2e/pages/18-1-understanding-evolution', license: 'CC BY 4.0' },
+    scope: 'Variation, natural selection, homologous structures and common ancestry support the selection model.',
+    threeDStatus: 'No reviewed 3D source approved; evolution scenes are procedural teaching models.'
+  },
+  environment: {
+    moduleId: 'environment',
+    label: 'Environment',
+    source: { title: 'OpenStax Biology 2e · Energy Flow through Ecosystems', url: 'https://openstax.org/books/biology-2e/pages/46-2-energy-flow-through-ecosystems', license: 'CC BY 4.0' },
+    scope: 'Trophic levels and transfer efficiency support the energy-flow model.',
+    threeDStatus: 'No reviewed 3D source approved; ecology scenes are procedural teaching models.'
   }
 };
 

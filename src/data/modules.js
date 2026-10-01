@@ -110,11 +110,33 @@ export const modules = [
     icon: 'Aa',
     status: 'core',
     topics: ['Alleles', 'Genotypes', 'Probability']
+  },
+  {
+    id: 'evolution',
+    title: 'Evolution',
+    eyebrow: 'Change · Populations',
+    short: 'Evolution',
+    description: 'Run natural selection on a moth population and compare homologous limbs, fossils and the human family tree.',
+    accent: '#fb923c',
+    icon: '⟿',
+    status: 'core',
+    topics: ['Natural selection', 'Evidence', 'Human origins']
+  },
+  {
+    id: 'environment',
+    title: 'Environment',
+    eyebrow: 'Ecology · Energy flow',
+    short: 'Environment',
+    description: 'Follow energy up a food chain, explore the Sundarbans mangroves and the ozone layer.',
+    accent: '#4ade80',
+    icon: '❦',
+    status: 'core',
+    topics: ['Food chains', '10% law', 'Conservation']
   }
 ];
 
 export const coreModules = modules.filter((module) => module.status === 'core');
-export const guidedPath = ['cell', 'tissues', 'digestion', 'circulation', 'nervous', 'respiration', 'excretion', 'reproduction', 'heredity', 'kinesiology'];
+export const guidedPath = ['cell', 'tissues', 'digestion', 'circulation', 'nervous', 'respiration', 'excretion', 'reproduction', 'heredity', 'evolution', 'environment', 'kinesiology'];
 
 export const guidedPathMeta = {
   kinesiology: { stage: 'Integration · movement', estimatedMinutes: 10, pathReason: 'See how every system cooperates when the body moves.' },
@@ -126,7 +148,9 @@ export const guidedPathMeta = {
   respiration: { stage: 'Systems', estimatedMinutes: 8, pathReason: 'Link ventilation, airways, and gas exchange.' },
   excretion: { stage: 'Systems', estimatedMinutes: 9, pathReason: 'Follow filtration and homeostatic water recovery.' },
   reproduction: { stage: 'Continuity', estimatedMinutes: 8, pathReason: 'Sequence gametes, fertilization, and early development.' },
-  heredity: { stage: 'Information', estimatedMinutes: 8, pathReason: 'Use probability to reason about inherited traits.' }
+  heredity: { stage: 'Information', estimatedMinutes: 8, pathReason: 'Use probability to reason about inherited traits.' },
+  evolution: { stage: 'Change', estimatedMinutes: 8, pathReason: 'See how inherited variation and selection change populations.' },
+  environment: { stage: 'Ecology', estimatedMinutes: 8, pathReason: 'Connect organisms through food chains and energy flow.' }
 };
 
 export const cellOrganelles = [
@@ -200,6 +224,16 @@ export const quizSets = {
     { question: 'What is an allele?', choices: ['A version of a gene', 'A whole organism', 'A type of cell membrane', 'A hormone pulse'], answer: 0, explanation: 'Alleles are alternative versions of a gene that can contribute to different forms of a trait.' },
     { question: 'In a simple dominant–recessive model, which genotype expresses the recessive phenotype?', choices: ['AA', 'Aa', 'aa', 'A'], answer: 2, explanation: 'The recessive phenotype is expressed when both inherited alleles are recessive: aa.' },
     { question: 'What does a Punnett square estimate?', choices: ['Exact future children', 'Expected genotype and phenotype proportions', 'The number of chromosomes in a cell', 'The speed of DNA replication'], answer: 1, explanation: 'A Punnett square lists possible allele combinations and their expected proportions for a defined cross.' }
+  ],
+  evolution: [
+    { question: 'Which condition is essential for natural selection to change a population?', choices: ['Inherited variation', 'Traits gained by exercise', 'Identical individuals', 'Unlimited survival'], answer: 0, explanation: 'Selection can only change a population when individuals differ in traits that are passed on to offspring.' },
+    { question: 'On soot-darkened trees, which peppered moths became more common?', choices: ['Pale moths', 'Dark moths', 'Neither', 'Only caterpillars'], answer: 1, explanation: 'Birds found the pale moths more easily on dark bark, so dark moths survived and reproduced more.' },
+    { question: 'The forelimbs of humans, whales and bats are examples of…', choices: ['Analogous organs', 'Homologous organs', 'Vestigial organs', 'Unrelated organs'], answer: 1, explanation: 'They share the same basic bone plan inherited from a common ancestor but perform different functions.' }
+  ],
+  environment: [
+    { question: 'About what fraction of energy passes from one trophic level to the next?', choices: ['10%', '50%', '90%', '100%'], answer: 0, explanation: 'Under the 10 per cent law, most energy is used or lost as heat and only about one tenth reaches the next level.' },
+    { question: 'Which organisms form the first trophic level?', choices: ['Herbivores', 'Carnivores', 'Producers', 'Decomposers'], answer: 2, explanation: 'Green plants fix sunlight energy by photosynthesis and form the base of the food chain.' },
+    { question: 'What do the breathing roots of Sundarbans mangroves do?', choices: ['Take in air from above the mud', 'Store salt', 'Catch insects', 'Attract pollinators'], answer: 0, explanation: 'Pneumatophores grow up out of waterlogged, oxygen-poor mud and take in air through small pores.' }
   ],
   tissues: [
     { question: 'Which tissue type mainly covers surfaces and lines cavities?', choices: ['Epithelial', 'Connective', 'Muscle', 'Nervous'], answer: 0, explanation: 'Epithelial tissue forms coverings, linings, and many glands, helping protect and control exchange.' },
