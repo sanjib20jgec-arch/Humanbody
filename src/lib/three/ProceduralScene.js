@@ -5,6 +5,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+function isLightTheme() { return typeof document !== 'undefined' && document.documentElement.dataset.theme === 'light'; }
+
 export const clamp01 = (v) => Math.min(1, Math.max(0, v));
 export const ease = (v) => { const x = clamp01(v); return x * x * (3 - 2 * x); };
 export const seeded = (seed) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
@@ -59,13 +61,32 @@ export class ProceduralScene {
     this.intersection.observe(container);
     this.onVisibility = () => { if (!document.hidden) this.requestRender(); };
     document.addEventListener('visibilitychange', this.onVisibility);
+    this.themeObserver = typeof MutationObserver !== 'undefined' ? new MutationObserver(() => this.applyTheme()) : null;
+    this.themeObserver?.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     this.resize();
   }
 
   track(obj) { this.disposables.push(obj); return obj; }
   mat(color, opts = {}) {
     const m = new THREE.MeshStandardMaterial({ color, roughness: opts.roughness ?? 0.55, metalness: 0.02, clippingPlanes: opts.clip === false ? [] : [this.clip], side: opts.side ?? THREE.FrontSide, transparent: opts.opacity !== undefined, opacity: opts.opacity ?? 1, depthWrite: opts.opacity === undefined || opts.opacity > 0.6 });
+    m.userData.base = m.color.clone(); m.userData.baseOpacity = m.opacity;
+    this.adaptMaterial(m, isLightTheme());
     return this.track(m);
+  }
+  // Light theme: pale materials would vanish on a near-white page (R3), so cap lightness and lift faint opacity.
+  adaptMaterial(m, light) {
+    if (!m.userData?.base) return;
+    m.color.copy(m.userData.base);
+    m.opacity = m.userData.baseOpacity;
+    if (!light) return;
+    const hsl = {}; m.color.getHSL(hsl);
+    if (hsl.l > 0.6) m.color.setHSL(hsl.h, Math.min(1, hsl.s + 0.1), 0.6 - (hsl.l - 0.6) * 0.5);
+    if (m.transparent) m.opacity = Math.max(m.opacity, 0.4);
+  }
+  applyTheme() {
+    const light = isLightTheme();
+    for (const d of this.disposables) if (d.isMaterial) this.adaptMaterial(d, light);
+    this.requestRender();
   }
   geo(g) { return this.track(g); }
   part(id, mesh, parent = this.root) { mesh.userData.part = id; (this.partMeshes[id] ||= []).push(mesh); parent.add(mesh); return mesh; }
@@ -115,7 +136,7 @@ export class ProceduralScene {
   dispose() {
     this.disposed = true;
     this.resizeObserver.disconnect(); this.intersection.disconnect();
-    document.removeEventListener('visibilitychange', this.onVisibility);
+    document.removeEventListener('visibilitychange', this.onVisibility); this.themeObserver?.disconnect();
     this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown);
     this.renderer.domElement.removeEventListener('pointerup', this.onPointerUp);
     this.controls.dispose();

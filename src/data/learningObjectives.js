@@ -62,6 +62,10 @@ export const learningObjectives = {
 };
 
 export const evidenceReferences = {
+  evolutionBio: { label: 'OpenStax Biology 2e · Understanding evolution', url: 'https://openstax.org/books/biology-2e/pages/18-1-understanding-evolution' },
+  ecologyEnergy: { label: 'OpenStax Biology 2e · Energy flow through ecosystems', url: 'https://openstax.org/books/biology-2e/pages/46-2-energy-flow-through-ecosystems' },
+  heredityBio: { label: "OpenStax Biology 2e · Mendel's experiments", url: 'https://openstax.org/books/biology-2e/pages/12-1-mendels-experiments-and-the-laws-of-probability' },
+  reproductionBio: { label: 'OpenStax A&P 2e · Anatomy and physiology of the female reproductive system', url: 'https://openstax.org/books/anatomy-and-physiology-2e/pages/27-2-anatomy-and-physiology-of-the-female-reproductive-system' },
   muscularSystem: {
     label: 'OpenStax · Overview of muscle tissues',
     url: 'https://openstax.org/books/anatomy-and-physiology-2e/pages/10-1-overview-of-muscle-tissue'
