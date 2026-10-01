@@ -14,11 +14,14 @@ export default function DeepDiveExplorer({ reducedMotion, packs, builders, initi
   const { prefs } = usePreferences();
   const lang = prefs.language;
   const s = (key) => STRINGS_CELL[lang]?.[key] ?? STRINGS_CELL.en[key];
+  // Hide topics that have no chapter at the learner's level (e.g. Class 10-only dialysis at Class 9).
+  const visible = packs.filter((p) => p.chapters.some((c) => levelIncludes(prefs.level, c.level)));
+  const list = visible.length ? visible : packs;
   const [packId, setPackId] = useState(initialId || packs[0].id);
-  const pack = packs.find((p) => p.id === packId) || packs[0];
+  const pack = list.find((p) => p.id === packId) || list[0];
   return <section className="mito-slice" aria-labelledby="deep-title" lang={lang}>
     <div className="mito-picker" role="tablist" aria-label={s('topic')}>
-      {packs.map((p) => <button key={p.id} role="tab" aria-selected={p.id === pack.id} onClick={() => setPackId(p.id)}>{(p.title[lang] || p.title.en).replace(/\s*\(.*\)$/, '')}<small>{tagOf ? tagOf(p, lang, s) : ''}</small></button>)}
+      {list.map((p) => <button key={p.id} role="tab" aria-selected={p.id === pack.id} onClick={() => setPackId(p.id)}>{(p.title[lang] || p.title.en).replace(/\s*\(.*\)$/, '')}<small>{tagOf ? tagOf(p, lang, s) : ''}</small></button>)}
     </div>
     <DeepDive key={pack.id} pack={pack} builder={builders[pack.id]} reducedMotion={reducedMotion} s={s} eyebrow={eyebrow?.[lang] ?? eyebrow?.en ?? s('deepDive')} />
   </section>;
