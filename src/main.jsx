@@ -1,8 +1,14 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { PreferencesProvider } from './lib/PreferencesContext.jsx';
+import { applyPreferencesToDocument, readAllPreferences } from './lib/preferences.js';
 import { applyDeviceProfileClasses, watchDeviceProfileChanges } from './lib/deviceProfile.js';
 import './styles.css';
+import './theme.css';
+
+// Foundation: apply theme/language before first paint (no flash of wrong theme).
+applyPreferencesToDocument(readAllPreferences());
 
 // Phase 119 (R11): the offline artifact's boot watchdog (plain-ES5 script in
 // the generated HTML) shows a friendly note if this bundle never evaluates —
@@ -44,7 +50,9 @@ class AppErrorBoundary extends React.Component {
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AppErrorBoundary>
-      <App />
+      <PreferencesProvider>
+        <App />
+      </PreferencesProvider>
     </AppErrorBoundary>
   </React.StrictMode>
 );
