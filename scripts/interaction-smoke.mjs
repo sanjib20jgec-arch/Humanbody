@@ -19,6 +19,8 @@ const componentById = {
   excretion: 'ExcretionLab',
   reproduction: 'ReproductionLab',
   heredity: 'HeredityLab',
+  evolution: 'EvolutionLab',
+  environment: 'EnvironmentLab',
   kinesiology: 'KinesiologyLab'
 };
 const moduleSource = data.split('export const coreModules')[0];

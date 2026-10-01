@@ -10,7 +10,7 @@ assert.ok(guidedPathDefinition.steps.length >= 9);
 assert.equal(new Set(guidedPathDefinition.steps.map((step) => step.id)).size, guidedPathDefinition.steps.length);
 assert.ok(guidedPathDefinition.steps.every((step) => step.objective && step.objectives.length && step.modes.includes('explore') && step.sources.length));
 // Phase 72: Kinesiology Theater adds a tenth step under a new integration stage.
-assert.deepEqual(getGuidedPathSummary(guidedPathDefinition).stages, ['Foundations', 'Systems', 'Coordination', 'Continuity', 'Information', 'Integration · movement']);
+assert.deepEqual(getGuidedPathSummary(guidedPathDefinition).stages, ['Foundations', 'Systems', 'Coordination', 'Continuity', 'Information', 'Change', 'Ecology', 'Integration · movement']);
 
 const originalStorage = globalThis.localStorage;
 const store = new Map();

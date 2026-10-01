@@ -9,7 +9,9 @@ const moduleFiles = {
   respiration: 'RespirationLab.jsx',
   excretion: 'ExcretionLab.jsx',
   reproduction: 'ReproductionLab.jsx',
-  heredity: 'HeredityLab.jsx'
+  heredity: 'HeredityLab.jsx',
+  evolution: 'EvolutionLab.jsx',
+  environment: 'EnvironmentLab.jsx'
 };
 
 const app = await readFile('src/App.jsx', 'utf8');

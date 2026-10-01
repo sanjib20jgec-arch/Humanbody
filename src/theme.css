@@ -1,0 +1,119 @@
+/* Foundation (Section 0): theme, Bengali typography, text scale.
+   Dark theme = original src/styles.css. Light theme = auto-generated mirror
+   (scripts/generate-light-theme.mjs) + the hand-tuned overrides below. */
+@import './theme-light.generated.css';
+
+/* Bengali glyphs: Noto Sans Bengali (SIL OFL 1.1), Bengali subset only.
+   unicode-range means the file is downloaded only when Bengali text is shown. */
+@font-face {
+  font-family: 'Noto Sans Bengali';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../node_modules/@fontsource/noto-sans-bengali/files/noto-sans-bengali-bengali-400-normal.woff2') format('woff2');
+  unicode-range: U+0951-0952, U+0964-0965, U+0980-09FE, U+1CD0, U+1CD2, U+1CD5-1CD6, U+1CD8, U+1CE1, U+1CEA, U+1CED, U+1CF2, U+1CF5-1CF7, U+200C-200D, U+20B9, U+25CC, U+A8F1;
+}
+@font-face {
+  font-family: 'Noto Sans Bengali';
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+  src: url('../node_modules/@fontsource/noto-sans-bengali/files/noto-sans-bengali-bengali-600-normal.woff2') format('woff2');
+  unicode-range: U+0951-0952, U+0964-0965, U+0980-09FE, U+1CD0, U+1CD2, U+1CD5-1CD6, U+1CD8, U+1CE1, U+1CEA, U+1CED, U+1CF2, U+1CF5-1CF7, U+200C-200D, U+20B9, U+25CC, U+A8F1;
+}
+
+:root {
+  --sans: 'Manrope', 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;
+  --user-text-scale: 1;
+  --mono: 'DM Mono', ui-monospace, 'Noto Sans Bengali', monospace;
+}
+/* Bengali conjuncts and matras need more vertical room than Latin. */
+:root[lang="bn"] body { line-height: 1.65; }
+:root[lang="bn"] .eyebrow { letter-spacing: .02em; }
+
+/* User text-size slider (Settings) — scales rem/em-based and root text. */
+html { font-size: calc(100% * var(--user-text-scale)); }
+
+/* ---- Light theme hand-tuning on top of the generated mirror ---- */
+:root[data-theme="light"] {
+  --panel: #fdfcfa;
+  --panel-2: #f6f4f0;
+  --bg: #f4f2ee;
+  --bg-deep: #ebe8e2;
+  --text: #16191d;
+  color: var(--text);
+  background: var(--bg);
+}
+:root[data-theme="light"] body { background: radial-gradient(circle at 55% -30%, #dfe8ef 0, var(--bg) 34%, var(--bg-deep) 100%); }
+:root[data-theme="light"] .modal-card { box-shadow: 0 24px 60px rgba(30, 40, 55, .18); }
+:root[data-theme="light"] .modal-backdrop { background: rgba(30, 36, 44, .38); }
+/* 3D stages keep a dark backdrop in light theme: anatomical lighting,
+   emissive signals and histology stains were tuned for it (R3). */
+:root[data-theme="light"] canvas { background-color: transparent; }
+
+/* Low graphics / data saver */
+:root[data-graphics="low"] *, :root[data-graphics="low"] *::before, :root[data-graphics="low"] *::after { animation-iteration-count: 1 !important; }
+
+/* Segmented control used by Foundation settings */
+.segmented { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in oklab, var(--panel) 80%, transparent); }
+.segmented button { min-height: 36px; padding: 6px 12px; border-radius: 8px; color: var(--muted); background: transparent; font-size: 12px; font-weight: 600; }
+.segmented button[aria-pressed="true"] { color: var(--bg-deep); background: var(--cyan); }
+:root[data-theme="light"] .segmented button[aria-pressed="true"] { color: #ffffff; }
+.setting-row .segmented { justify-self: end; }
+@media (max-width: 560px) { .setting-row:has(.segmented) { flex-direction: column; align-items: stretch; } }
+
+/* ---- Cell bay: Mitochondrion deep dive (tokens only → works in both themes) ---- */
+.mito-slice { margin-top: 18px; padding: clamp(12px, 2.5vw, 20px); border: 1px solid var(--line); border-radius: 14px; background: color-mix(in oklab, var(--panel) 92%, transparent); container-type: inline-size; }
+.mito-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.mito-head h3 { margin: 4px 0; font-size: 1.15rem; }
+.mito-head p { margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.5; max-width: 62ch; }
+.mito-badge { flex: none; padding: 4px 8px; border: 1px solid var(--line-bright); border-radius: 6px; color: var(--muted); font: 600 10px var(--mono); }
+.mito-chapters { display: flex; gap: 6px; margin: 14px 0 10px; overflow-x: auto; scrollbar-width: thin; }
+.mito-chapters button { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--muted); background: transparent; font-size: .8rem; font-weight: 600; text-align: left; }
+.mito-chapters button small { color: var(--faint); font: 10px var(--mono); }
+.mito-chapters button[aria-selected="true"] { color: var(--text); border-color: var(--purple); background: color-mix(in oklab, var(--purple) 14%, transparent); }
+.mito-stage-wrap { position: relative; border-radius: 12px; overflow: hidden; background: radial-gradient(circle at 50% 40%, #1c2440, #070b14 75%); }
+.mito-stage { display: block; width: 100%; height: clamp(260px, 52vh, 460px); touch-action: none; }
+.mito-stage canvas { display: block; width: 100% !important; height: 100% !important; }
+.mito-caption { margin: 0; padding: 10px 14px; color: #e8eef6; background: rgba(5, 9, 16, .78); font-size: .85rem; line-height: 1.5; }
+.mito-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.mito-controls .control-button { min-height: 40px; }
+.mito-controls input[type="range"] { flex: 1 1 160px; min-height: 40px; accent-color: var(--purple); }
+.mito-controls output { color: var(--muted); font: 11px var(--mono); }
+.mito-note { margin: 8px 0 0; color: var(--faint); font-size: .75rem; line-height: 1.5; }
+.mito-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 12px; margin-top: 14px; }
+@container (max-width: 620px) { .mito-grid { grid-template-columns: 1fr; } .mito-head { flex-direction: column; } }
+.mito-parts { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; }
+.mito-parts .eyebrow, .mito-parts small { flex-basis: 100%; }
+.mito-parts small { color: var(--faint); font-size: .72rem; }
+.mito-parts button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: transparent; font-size: .78rem; }
+.mito-parts button i { width: 10px; height: 10px; border-radius: 50%; }
+.mito-parts button[aria-pressed="true"] { color: var(--text); border-color: var(--line-bright); background: color-mix(in oklab, var(--text) 8%, transparent); }
+.mito-info { padding: 12px 14px; border-left: 3px solid var(--purple); border-radius: 8px; background: color-mix(in oklab, var(--purple) 7%, transparent); }
+.mito-info h4 { margin: 4px 0 6px; font-size: 1rem; }
+.mito-info p { margin: 0 0 6px; color: var(--muted); font-size: .85rem; line-height: 1.55; }
+.mito-deep b { color: var(--text); }
+.mito-myths { display: grid; gap: 8px; margin-top: 14px; }
+.mito-myths div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.mito-myths del { color: var(--red); font-size: .82rem; }
+.mito-myths p { margin: 4px 0 0; color: var(--muted); font-size: .84rem; line-height: 1.5; }
+.mito-quiz { display: grid; gap: 10px; margin-top: 16px; }
+.mito-quiz fieldset { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.mito-quiz legend { padding: 0 4px; font-size: .88rem; font-weight: 600; }
+.mito-quiz fieldset button { display: block; width: 100%; min-height: 40px; margin-top: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--text); background: transparent; text-align: left; font-size: .84rem; }
+.mito-quiz fieldset button.right { border-color: #22c55e; background: color-mix(in oklab, #22c55e 16%, transparent); }
+.mito-quiz fieldset button.wrong { border-color: var(--red); background: color-mix(in oklab, var(--red) 14%, transparent); }
+.mito-quiz fieldset p { margin: 6px 0 0; color: var(--muted); font-size: .8rem; }
+.mito-facts { margin-top: 14px; }
+.mito-facts summary { min-height: 40px; cursor: pointer; color: var(--text); font-weight: 600; font-size: .86rem; }
+.mito-facts ul { margin: 6px 0 0; padding-left: 18px; }
+.mito-facts li { margin-bottom: 10px; }
+.mito-facts li p { margin: 0 0 4px; color: var(--muted); font-size: .84rem; line-height: 1.5; }
+.mito-facts small { display: flex; flex-direction: column; gap: 2px; font-size: .72rem; }
+.mito-facts a { color: var(--cyan); overflow-wrap: anywhere; }
+.m2d-part { cursor: pointer; }
+.m2d-part.on, .m2d-part:focus-visible { outline: none; filter: drop-shadow(0 0 6px #fff) brightness(1.15); }
+.mito-picker { display: flex; gap: 6px; margin: -4px 0 14px; padding-bottom: 6px; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: thin; }
+.mito-picker button { flex: none; display: flex; flex-direction: column; align-items: flex-start; min-height: 44px; padding: 7px 12px; border-radius: 10px; color: var(--muted); background: transparent; font-size: .82rem; font-weight: 700; }
+.mito-picker button small { color: var(--faint); font-size: .66rem; font-weight: 500; }
+.mito-picker button[aria-selected="true"] { color: var(--text); background: color-mix(in oklab, var(--cyan) 16%, transparent); box-shadow: inset 0 -2px 0 var(--cyan); }

@@ -3,14 +3,15 @@
  *
  * Conduction is shown as route segments with educational timing, not
  * electrophysiology. The arc models WITHDRAWAL from a hot surface, which is
- * Aδ-mediated and polysynaptic — real latencies run ~200–500 ms, far slower
- * than a monosynaptic stretch reflex (~30–50 ms). Segment durations below sum
- * to ~200 ms so the teaching point ("reflex beats conscious perception")
+ * Aδ-mediated and polysynaptic — measured EMG onset of the withdrawal reflex is
+ * ~65–150 ms (PMC9872115; PLOS One 2024), slower than a monosynaptic stretch
+ * reflex (~30–50 ms); visible limb movement follows a little later. Segment
+ * durations below sum to ~200 ms (to visible shortening) so the teaching point ("reflex beats conscious perception")
  * survives with exam-defensible magnitudes. The reflex arc completes far
  * faster than conscious perception — that ordering is preserved here as
  * explicit event timings.
  */
-export const CONDUCTION_DISCLOSURE = 'Teaching timing for an Aδ-mediated withdrawal reflex (real latency ≈ 200–500 ms); values are approximations, not measured electrophysiology.';
+export const CONDUCTION_DISCLOSURE = 'Teaching timing for an Aδ-mediated withdrawal reflex (measured reflex muscle onset ≈ 65–150 ms; visible movement follows shortly after); values are approximations, not measured electrophysiology.';
 
 export const REFLEX_SEGMENTS = [
   { id: 'receptor', label: 'Skin receptor', detail: 'Heat is transduced by nociceptors into a receptor potential.', durationMs: 8 },

@@ -12,6 +12,9 @@ export default defineConfig(({ mode }) => ({
     // The offline generator consumes this build. Keep lazy simulation chunks
     // embedded in one browser file so the artifact remains self-contained.
     rolldownOptions: { output: { codeSplitting: false } },
+    // Bengali font files (~92 kB) are inlined so the single-file artifact
+    // still renders বাংলা without any network request.
+    assetsInlineLimit: 200 * 1024,
   } : undefined,
   server: {
     host: '0.0.0.0',
