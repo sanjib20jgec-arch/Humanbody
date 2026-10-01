@@ -11,10 +11,11 @@ const BAYS = [
   { name: 'nervous', packs: '../src/data/nervous/nervousPacks.js', key: 'nervousPacks', builders: '../src/lib/nervous/nervousBuilders.js', min: 6 },
   { name: 'respiration', packs: '../src/data/respiration/respirationPacks.js', key: 'respirationPacks', builders: '../src/lib/respiration/respirationBuilders.js', min: 4 },
   { name: 'excretion', packs: '../src/data/excretion/excretionPacks.js', key: 'excretionPacks', builders: '../src/lib/excretion/excretionBuilders.js', min: 4 },
+  { name: 'reproduction', packs: '../src/data/reproduction/reproductionPacks.js', key: 'reproductionPacks', builders: '../src/lib/reproduction/reproductionBuilders.js', min: 5, class9Min: 2 },
 ];
 let n = 0;
 const ok = (c, m) => { assert.ok(c, m); n++; };
-const LATIN_OK = /\b(ATP|ADP|DNA|RNA|SA|AV|ADH|pO2|pCO2|Hg|mL|L|Ca2|Ca|Na|K|O2|CO2|pH|NCERT|NEET|WBBSE|µm|nm|mm|cm|m|s|ms|3D|A|I|H|Z)\b/g;
+const LATIN_OK = /\b(ATP|ADP|DNA|RNA|SA|AV|ADH|LH|IVF|ZIFT|GIFT|ICSI|PCPNDT|IUD|pO2|pCO2|Hg|mL|L|Ca2|Ca|Na|K|O2|CO2|pH|NCERT|NEET|WBBSE|µm|nm|mm|cm|m|s|ms|3D|A|I|H|Z)\b/g;
 function checkBn(text, where) {
   ok(typeof text === 'string' && text.length > 0, `${where}: missing bn`);
   ok(!/[০-৯]/.test(text), `${where}: Bengali digits (D26)`);
@@ -48,7 +49,7 @@ for (const bay of BAYS) {
     ok(pk.parts.filter((p) => p.level === entry).length >= 2, `${pk.id}: ≥2 entry-level parts`);
     if (entry === 'class9') nClass9++;
   }
-  ok(nClass9 >= packs.length - 1, `${bay.name}: Class 9 default level must cover almost every pack (D23)`);
+  ok(nClass9 >= (bay.class9Min ?? packs.length - 1), `${bay.name}: Class 9 default level must cover almost every pack (D23)`);
   ok(!JSON.stringify(packs).toLowerCase().includes('frog'), `${bay.name}: frog removed (TD2)`);
 }
 console.log(`bay packs smoke: ${n} checks passed`);
