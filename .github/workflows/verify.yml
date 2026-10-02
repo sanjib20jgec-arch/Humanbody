@@ -31,12 +31,10 @@ jobs:
       - name: Run static verification
         run: npm run verify:static
 
-  browser-contracts:
-    name: Chromium browser contracts
+  visual-contracts:
+    name: Responsive visual gate
     runs-on: ubuntu-latest
-    # The suite covers both desktop and phone projects serially to keep
-    # SwiftShader stable; 122 browser tests plus the visual matrix need extra time.
-    timeout-minutes: 30
+    timeout-minutes: 20
     needs: static-contracts
     steps:
       - name: Check out repository
@@ -50,17 +48,49 @@ jobs:
         run: npm ci
       - name: Install Chromium and Linux libraries
         run: npx playwright install --with-deps chromium
-      - name: Build production preview for visual gate
+      - name: Build production preview
         run: npm run build
       - name: Run required responsive visual gate
         run: npm run verify:visual
-      - name: Run browser verification
-        run: npm run verify:browser
-      - name: Upload browser diagnostics and visual review frames
+      - name: Upload visual gate screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-diagnostics-${{ github.run_attempt }}
+          name: visual-gate-${{ github.run_attempt }}
+          path: test-results/visual-gate/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  browser-contracts:
+    name: Chromium contracts (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    # Keep the SwiftShader suite serial within each profile, but run desktop and
+    # phone profiles on separate runners so neither inherits the combined timeout.
+    timeout-minutes: 45
+    needs: static-contracts
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium-desktop, chromium-phone]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium and Linux libraries
+        run: npx playwright install --with-deps chromium
+      - name: Run browser verification
+        run: npm run verify:browser -- --project=${{ matrix.project }}
+      - name: Upload browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-${{ matrix.project }}-${{ github.run_attempt }}
           path: |
             test-results/
             playwright-report/
