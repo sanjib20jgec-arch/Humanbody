@@ -62,16 +62,17 @@ jobs:
           retention-days: 14
 
   browser-contracts:
-    name: Chromium contracts (${{ matrix.project }})
+    name: Chromium contracts (${{ matrix.project }}, shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
-    # Keep the SwiftShader suite serial within each profile, but run desktop and
-    # phone profiles on separate runners so neither inherits the combined timeout.
-    timeout-minutes: 45
+    # Keep SwiftShader serial within each runner; split the 122 tests into small
+    # independent shards to limit renderer-resource growth and stay under timeout.
+    timeout-minutes: 30
     needs: static-contracts
     strategy:
       fail-fast: false
       matrix:
         project: [chromium-desktop, chromium-phone]
+        shard: [1, 2, 3, 4]
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -85,12 +86,12 @@ jobs:
       - name: Install Chromium and Linux libraries
         run: npx playwright install --with-deps chromium
       - name: Run browser verification
-        run: npm run verify:browser -- --project=${{ matrix.project }}
+        run: npm run verify:browser -- --project=${{ matrix.project }} --shard=${{ matrix.shard }}/4
       - name: Upload browser diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-${{ matrix.project }}-${{ github.run_attempt }}
+          name: playwright-${{ matrix.project }}-shard-${{ matrix.shard }}-${{ github.run_attempt }}
           path: |
             test-results/
             playwright-report/
