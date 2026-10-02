@@ -665,7 +665,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     renderer.xr.enabled = true; // Phase 94 (E6): optional immersive supplement
     xrRef.current = renderer;
     if (navigator.xr?.isSessionSupported) navigator.xr.isSessionSupported('immersive-vr').then((ok) => setXrAvailable(Boolean(ok))).catch(() => {});
-    if (import.meta.env.DEV) window.__kineDebug = { scene, camera, renderer, rig, THREE, ghost, strokes: strokesRef.current, trails: trailRef.current, markersVisible: () => rigRef.current?.markerGroup?.visible, outlineCount: () => Object.values(rigRef.current?.outlines || {}).filter((o) => o.visible).length, lastDualMode: () => lastDualMode, timeNow: () => stateRef.current.time, controls, orbitOn: () => orbitRef.current };
+    if (import.meta.env.DEV) window.__kineDebug = { scene, camera, renderer, rig, THREE, ghost, strokes: strokesRef.current, trails: trailRef.current, markersVisible: () => rigRef.current?.markerGroup?.visible, outlineCount: () => Object.values(rigRef.current?.outlines || {}).filter((o) => o.visible).length, lastDualMode: () => lastDualMode, timeNow: () => stateRef.current.time, activeAction: () => stateRef.current.actionId, playing: () => playRef.current, trailsEnabled: () => stateRef.current.trails, controls, orbitOn: () => orbitRef.current };
 
     const raycaster = new THREE.Raycaster();
     const onPick = (event) => {

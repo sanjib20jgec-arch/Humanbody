@@ -230,8 +230,22 @@ test.describe('Kinesiology Theater', () => {
   });
 
   test('phase 98: endpoint motion trails accumulate during locomotion and clear on toggle', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     const theater = await openTheater(page);
-    await page.waitForFunction(() => (window.__kineDebug?.trails?.[0]?.pts?.length || 0) > 8, null, { timeout: 20000 });
+    const playPause = page.locator('.sim-controls .primary-control');
+    if (await playPause.getAttribute('aria-pressed') !== 'true') await playPause.click();
+    await expect(playPause).toHaveAttribute('aria-pressed', 'true');
+    await theater.getByRole('tab', { name: /^walk\b/i }).click();
+    await expect.poll(() => page.evaluate(() => {
+      const debug = window.__kineDebug;
+      return {
+        points: debug?.trails?.[0]?.pts?.length || 0,
+        playing: debug?.playing?.() || false,
+        action: debug?.activeAction?.() || null,
+        enabled: debug?.trailsEnabled?.() || false
+      };
+    }), { timeout: 20000 }).toMatchObject({ points: expect.any(Number), playing: true, action: 'walk', enabled: true });
+    await expect.poll(() => page.evaluate(() => window.__kineDebug?.trails?.[0]?.pts?.length || 0), { timeout: 20000 }).toBeGreaterThan(8);
     const vis = await page.evaluate(() => window.__kineDebug.trails[0].line.visible);
     expect(vis).toBe(true);
     await theater.locator('.kine-tool-toggle', { hasText: 'motion trails' }).locator('input').uncheck();
