@@ -29,13 +29,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Run static verification
-        run: npm run verify
+        run: npm run verify:static
 
   browser-contracts:
     name: Chromium browser contracts
     runs-on: ubuntu-latest
     # The suite covers both desktop and phone projects serially to keep
-    # SwiftShader stable; 120 tests need more than the old 15-minute cap.
+    # SwiftShader stable; 122 browser tests plus the visual matrix need extra time.
     timeout-minutes: 30
     needs: static-contracts
     steps:
@@ -50,6 +50,10 @@ jobs:
         run: npm ci
       - name: Install Chromium and Linux libraries
         run: npx playwright install --with-deps chromium
+      - name: Build production preview for visual gate
+        run: npm run build
+      - name: Run required responsive visual gate
+        run: npm run verify:visual
       - name: Run browser verification
         run: npm run verify:browser
       - name: Upload browser diagnostics and visual review frames

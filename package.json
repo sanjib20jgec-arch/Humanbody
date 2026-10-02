@@ -44,7 +44,7 @@
     "verify:interaction": "node scripts/interaction-smoke.mjs",
     "verify:reduced-motion": "node scripts/reduced-motion-smoke.mjs",
     "verify:deployment": "node scripts/deployment-smoke.mjs",
-    "verify": "npm run verify:foundation && npm run verify:cell-slice && npm run verify:bay-packs && npm run build && npm run build:offline && npm run generate:offline && node scripts/smoke.mjs && npm run verify:phase3 && npm run verify:anatomy && npm run verify:anatomy-registry && npm run verify:teaching-overlays && npm run verify:overlay-spec && npm run verify:cardio-physics && npm run verify:evidence && npm run verify:identity && npm run verify:framing && npm run verify:accessible-catalog && npm run verify:cardiac-states && npm run verify:digestive-stages && npm run verify:rendering && npm run verify:materials && npm run verify:director && npm run verify:physio-models && npm run report:visual-review && npm run report:3d-sources && npm run report:learning && npm run report:release && npm run verify:brain && npm run verify:atlas-binary && npm run report:atlas && npm run verify:runtime && npm run verify:performance && npm run verify:mobile && npm run verify:viewport && npm run verify:guided-path && npm run verify:guided-path-ui && npm run verify:curriculum && npm run verify:interaction && npm run verify:reduced-motion && npm run verify:kinesiology && npm run verify:kinesiology-assets && npm run verify:deployment && npm run verify:visual",
+    "verify": "npm run verify:static && npm run verify:visual && npm run verify:browser",
     "preview": "vite preview --host 0.0.0.0",
     "verify:kinesiology": "node scripts/kinesiology-governance-smoke.mjs",
     "verify:kinesiology-assets": "node scripts/kinesiology-asset-smoke.mjs",
@@ -52,7 +52,9 @@
     "verify:foundation": "node scripts/foundation-smoke.mjs",
     "verify:cell-slice": "node scripts/cell-slice-smoke.mjs",
     "verify:bay-packs": "node scripts/bay-packs-smoke.mjs",
-    "verify:visual": "node scripts/visual-gate.mjs"
+    "verify:visual": "node scripts/visual-gate.mjs --strict",
+    "verify:static": "npm run verify:foundation && npm run verify:cell-slice && npm run verify:bay-packs && npm run build && npm run build:offline && npm run generate:offline && node scripts/smoke.mjs && npm run verify:phase3 && npm run verify:anatomy && npm run verify:anatomy-registry && npm run verify:teaching-overlays && npm run verify:overlay-spec && npm run verify:cardio-physics && npm run verify:evidence && npm run verify:identity && npm run verify:framing && npm run verify:accessible-catalog && npm run verify:cardiac-states && npm run verify:digestive-stages && npm run verify:rendering && npm run verify:materials && npm run verify:director && npm run verify:physio-models && npm run report:visual-review && npm run report:3d-sources && npm run report:learning && npm run report:release && npm run verify:brain && npm run verify:atlas-binary && npm run report:atlas && npm run verify:runtime && npm run verify:performance && npm run verify:mobile && npm run verify:viewport && npm run verify:guided-path && npm run verify:guided-path-ui && npm run verify:curriculum && npm run verify:interaction && npm run verify:reduced-motion && npm run verify:kinesiology && npm run verify:kinesiology-assets && npm run verify:deployment",
+    "report:visual-gate": "node scripts/visual-gate.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^4.8.2",

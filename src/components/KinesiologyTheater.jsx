@@ -75,6 +75,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   const overlayRef = useRef(null);
   const ribbonHeadRef = useRef(null);
   const [tour, setTour] = useState(() => { try { return !sessionStorage.getItem('kine-tour'); } catch { return true; } });
+  const [toolsOpen, setToolsOpen] = useState(false);
   const comRef = useRef({ trail: [], ys: [], vert: null });
   const comLineRef = useRef(null);
   const ghostRigRef = useRef(null);
@@ -814,11 +815,6 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   const muscleList = useMemo(() => Object.keys(roles).sort(), [roles]);
 
   return <div className={`kinesiology-theater rep-${repMode}`} data-kinesiology-theater="true">
-    {tour && <div className="kine-tour" role="dialog" aria-label="New to 3D? quick tour">
-      <strong>New to 3D?</strong>
-      <span>1 · Drag the figure to orbit. 2 · Keys 1–7 switch camera angles; space pauses. 3 · Coloured glow = working muscle: red prime mover, amber synergist, cyan stabilizer.</span>
-      <button type="button" className="primary-cta" onClick={() => { setTour(false); try { sessionStorage.setItem('kine-tour', '1'); } catch {} }}>Got it</button>
-    </div>}
     <div className="kine-disclosure" role="note">
       <Icon name="info" size={14} />
       <span>Performance teaching model — simplified for education, not the certified BodyParts3D reference. {action.source === 'cmu' ? 'Motion: CMU Graphics Lab mocap (retargeted); data from mocap.cs.cmu.edu, NSF Grant #0196217.' : 'Authored teaching track — not motion capture.'}</span>
@@ -868,6 +864,10 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
       </div>}
       <aside className="kine-side">
         <div className="kine-block">
+          {tour && <div className="kine-tour" role="note" aria-label="Movement Theater quick tips">
+            <div className="kine-tour-copy"><strong>Quick start</strong><span>Drag to orbit · keys 1–7 change the camera · Space toggles playback. Choose an action, then select a muscle to explore its role.</span></div>
+            <button type="button" className="kine-tour-dismiss" onClick={() => { setTour(false); try { sessionStorage.setItem('kine-tour', '1'); } catch {} }}>Got it</button>
+          </div>}
           <span className="eyebrow">EVERYDAY ACTIONS</span>
           <div className="kine-actions" role="tablist" aria-label="Choose an action">
             {ACTIONS.map((a) => <button key={a.id} role="tab" aria-selected={a.id === actionId} className={a.id === actionId ? 'active' : ''} onClick={() => setActionId(a.id)}>{a.id}<small>{SOURCE_BADGE[a.source].split('—')[0].split('(')[0].trim()}</small></button>)}
@@ -969,8 +969,14 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         </div>
       </aside>
     </div>
-    <div className="kine-transport">
-      <div className="kine-tools">
+    <div className={`kine-transport ${toolsOpen ? 'tools-open' : ''}`}>
+      <details className="kine-tools-disclosure" open={toolsOpen} onToggle={(event) => {
+        const open = event.currentTarget.open;
+        if (open !== toolsOpen) setToolsOpen(open);
+        if (!open) { setSelfCompare(false); setDrill(null); }
+      }}>
+        <summary><span className="kine-tools-title"><strong>More study tools</strong><small>Study modes, accessibility, annotation, comparison, and retrieval practice</small></span><span className="kine-tools-chevron" aria-hidden="true">⌄</span></summary>
+        <div className="kine-tools">
         <button type="button" className="kine-tool" aria-label="Step one frame back" onClick={() => { const m = stateRef.current.clipsMeta?.[action.clip?.replace('.bvh', '')]; setPlaying(false); stateRef.current.time = Math.max(0, stateRef.current.time - (m ? action.duration * m.frameTime : 1 / 30)); }}>−1f</button>
         <button type="button" className="kine-tool" aria-label="Step one frame forward" onClick={() => { const m = stateRef.current.clipsMeta?.[action.clip?.replace('.bvh', '')]; setPlaying(false); stateRef.current.time = Math.min(action.duration, stateRef.current.time + (m ? action.duration * m.frameTime : 1 / 30)); }}>+1f</button>
         {action.id === 'walk' && <button type="button" className="kine-tool" aria-label="Snap to nearest foot contact" onClick={() => { const w = stateRef.current.clipsMeta?.walk_cmu; const cs = stateRef.current.contacts; if (w && cs) { const tt = stateRef.current.time; const near = cs.map((c) => (c / w.frames) * action.duration).reduce((a, b) => (Math.abs(b - tt) < Math.abs(a - tt) ? b : a)); stateRef.current.time = near; setPlaying(false); } }}>⤓ contact</button>}
@@ -1014,7 +1020,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         <span>Your knee flexion: <b ref={selfKneeRef}>–</b> vs figure’s left knee in the readout above.</span>
         <small>{camError || 'Camera stays on your device. Frames are analysed in your browser and discarded instantly; nothing is stored or sent.'}</small>
       </div>}
-      {drill && <div className="kine-drill" role="dialog" aria-label="Retrieval practice drill">
+      {drill && <div className="kine-drill" role="region" aria-label="Retrieval practice drill">
         {drill.done ? <>
           <strong>Drill complete.</strong>
           <span>{drill.stats.correct} correct · {drill.stats.wrong} missed this session. Missed items were re-asked until correct (spaced, Leitner-lite).</span>
@@ -1027,6 +1033,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
           <button type="button" className="kine-tool" onClick={() => setDrill(null)}>stop</button>
         </>}
       </div>}
+      </details>
       <div className="kine-scrub-wrap">
         <input className="kine-scrub" type="range" min={0} max={1000} defaultValue={0} aria-label="Scrub timeline" onChange={(e) => { stateRef.current.time = (e.target.value / 1000) * action.duration; }} />
         {action.id === 'walk' && <div className="kine-ticks">{Object.entries({ 0: 'Initial contact', 10: 'End loading response', 30: 'End mid-stance', 50: 'End terminal stance', 60: 'End pre-swing (toe-off)', 73: 'End initial swing', 87: 'End mid-swing', 100: 'Cycle end' }).map(([p, label]) => <button key={p} type="button" className="kine-tick" style={{ left: `${p}%` }} title={`${p}% — ${label}`} aria-label={`Jump to ${p}% of gait cycle: ${label}`} onClick={() => { stateRef.current.time = (p / 100) * action.duration; }} />)}</div>}

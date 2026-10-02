@@ -1,6 +1,6 @@
 # Brain & Nerves Atlas QC Report
 
-Generated: 2026-09-29  
+Generated: 2026-10-02  
 Manifest: BodyParts3D 4.0  
 Scope: nervous-system structures in the BodyParts3D adult-male educational reference  
 Evidence reference: https://openstax.org/books/anatomy-and-physiology-2e/pages/12-1-basic-structure-and-function-of-the-nervous-system

@@ -1,16 +1,54 @@
 import { test, expect } from '@playwright/test';
 
-async function openTheater(page) {
+async function openTheater(page, { openAdvanced = true } = {}) {
   await page.goto('/');
   await expect(page.locator('[data-hbl-app="true"]')).toBeVisible();
   await page.locator('.module-list-item', { hasText: 'Movement Theater' }).click();
   const theater = page.locator('[data-kinesiology-theater="true"]');
   await expect(theater).toBeVisible();
   await page.waitForSelector('.kine-stage canvas', { timeout: 20000 });
+  const advancedTools = theater.locator('.kine-tools-disclosure');
+  await expect(advancedTools).toBeVisible();
+  if (openAdvanced) {
+    await advancedTools.locator('summary').evaluate((summary) => summary.click());
+    await expect(advancedTools).toHaveAttribute('open', '');
+  }
   return theater;
 }
 
 test.describe('Kinesiology Theater', () => {
+  test('quick-start stays in context while optional tools collapse and core playback stays available', async ({ page }) => {
+    const theater = await openTheater(page, { openAdvanced: false });
+    const tour = theater.locator('.kine-tour');
+    const advanced = theater.locator('.kine-tools-disclosure');
+    const transport = theater.locator('.kine-transport');
+    await expect(tour).toBeVisible();
+    await expect(tour).toContainText('Quick start');
+    expect(await tour.evaluate((element) => getComputedStyle(element).position)).toBe('static');
+    await expect(theater.locator('.kine-stage canvas')).toBeVisible();
+    await expect(advanced).not.toHaveAttribute('open', '');
+    await expect(transport).not.toHaveClass(/tools-open/);
+    await expect(advanced.locator('.kine-tool').first()).toBeHidden();
+
+    const playPause = page.locator('.sim-controls .primary-control');
+    await expect(playPause).toBeVisible();
+    await expect(page.locator('.sim-controls .speed-selector')).toBeVisible();
+    const wasPlaying = await playPause.getAttribute('aria-pressed');
+    await playPause.click();
+    await expect(playPause).toHaveAttribute('aria-pressed', wasPlaying === 'true' ? 'false' : 'true');
+
+    const stickyByDefault = await transport.evaluate((element) => getComputedStyle(element).position === 'sticky');
+    const summary = advanced.locator('summary');
+    await summary.click();
+    await expect(advanced).toHaveAttribute('open', '');
+    await expect(transport).toHaveClass(/tools-open/);
+    await expect(advanced.locator('.kine-tool', { hasText: 'drill me' })).toBeVisible();
+    if (stickyByDefault) await expect(transport).toHaveCSS('position', 'static');
+    await summary.click();
+    await expect(advanced).not.toHaveAttribute('open', '');
+    await expect(transport).not.toHaveClass(/tools-open/);
+  });
+
   test('renders with real WebGL canvas, rig muscles, and seven actions', async ({ page }) => {
     const theater = await openTheater(page);
     await expect(theater.locator('.kine-actions button', { hasText: 'walk' })).toBeVisible();
@@ -304,7 +342,7 @@ test.describe('Kinesiology Theater', () => {
   test('phase 90: tour, CoM honesty readout, a11y toggles present', async ({ page }) => {
     const theater = await openTheater(page);
     await expect(theater.locator('.kine-tour')).toBeVisible();
-    await theater.locator('.kine-tour button').click();
+    await theater.locator('.kine-tour-dismiss').click();
     await expect(theater.locator('.kine-tour')).toBeHidden();
     await page.waitForTimeout(2500);
     await expect(theater.locator('.kine-honesty')).toContainText('CoM vertical');

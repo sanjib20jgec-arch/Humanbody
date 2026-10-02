@@ -6,7 +6,7 @@ const ctx = await browser.newContext({ ...devices['Pixel 7'] });
 const page = await ctx.newPage();
 await page.goto(url, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('.kine-stage canvas', { timeout: 30000 });
-await page.evaluate(() => { const x = document.querySelector('.kine-tour button'); x && x.click(); });
+await page.evaluate(() => { const x = document.querySelector('.kine-tour-dismiss'); x && x.click(); });
 await page.waitForTimeout(1500);
 const hint = await page.evaluate(() => getComputedStyle(document.querySelector('.kine-touch-hint')).display);
 // drag on the stage: camera should move
