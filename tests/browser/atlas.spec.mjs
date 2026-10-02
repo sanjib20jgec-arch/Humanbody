@@ -90,8 +90,11 @@ test.describe('Human Biology Lab browser contracts', () => {
   test('module objectives and evidence links appear on a learning bay', async ({ page }) => {
     await waitForShell(page);
     await page.locator('.module-list-item').filter({ hasText: 'Human Digestion' }).click();
+    const objectives = page.locator('.objective-disclosure');
+    await expect(objectives.locator('summary')).toContainText('By the end of this bay');
+    await objectives.locator('summary').click();
     await expect(page.getByRole('heading', { name: 'By the end of this bay' })).toBeVisible();
-    await expect(page.locator('.objective-strip ol li')).toHaveCount(3);
+    await expect(objectives.locator('ol li')).toHaveCount(3);
     await expect(page.locator('.objective-sources a')).toHaveCount(1);
   });
 

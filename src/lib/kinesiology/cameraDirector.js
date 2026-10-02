@@ -22,36 +22,49 @@ const FRAMES = {
 export function cameraStateFor(presetId, t, reducedMotion, actionId) {
   const f = FRAMES[actionId] || FRAMES.walk;
   const target = { x: 0, y: f.y, z: 0 };
+  const instant = Boolean(reducedMotion);
   switch (presetId) {
-    case 'anterior': return { pos: [0, 1.3, f.d], target, controls: false };
-    case 'posterior': return { pos: [0, 1.3, -f.d], target, controls: false };
-    case 'lateralL': return { pos: [f.d, 1.35, 0], target, controls: false };
-    case 'lateralR': return { pos: [-f.d, 1.35, 0], target, controls: false };
-    case 'superior': return { pos: [0, 4.0, 3.0], target: FULL, controls: false };
+    case 'anterior': return { pos: [0, 1.3, f.d], target, controls: false, instant };
+    case 'posterior': return { pos: [0, 1.3, -f.d], target, controls: false, instant };
+    case 'lateralL': return { pos: [f.d, 1.35, 0], target, controls: false, instant };
+    case 'lateralR': return { pos: [-f.d, 1.35, 0], target, controls: false, instant };
+    case 'superior': return { pos: [0, 4.0, 3.0], target: FULL, controls: false, instant };
     case 'turntable': {
       // Ease-in on the first two seconds so the orbit never snaps to speed.
       const a = reducedMotion ? 0.6 : 0.35 * (t < 2 ? (t * t) / 4 + t / 2 : t);
-      return { pos: [Math.sin(a) * f.d, 1.7, Math.cos(a) * f.d], target, controls: false };
+      return { pos: [Math.sin(a) * f.d, 1.7, Math.cos(a) * f.d], target, controls: false, instant };
     }
-    case 'closeup': return { follow: true, controls: false };
-    default: return { pos: [2.2, 1.7, 3.4], target: TARGET, controls: true };
+    case 'closeup': return { follow: true, controls: false, instant };
+    default: return { pos: [2.2, 1.7, 3.4], target: FULL, controls: true, instant };
   }
 }
 
 export function applyCamera(THREE, camera, rig, state, focusBone) {
-  // Phase 79: damped look-at point so follow and preset moves never snap.
   const look = camera.userData._kineLook || (camera.userData._kineLook = new THREE.Vector3(0, 1, 0));
+  const destination = camera.userData._kineDestination || (camera.userData._kineDestination = new THREE.Vector3());
   if (state.follow) {
     const bone = rig.bones[focusBone] || rig.bones.root;
-    const world = new THREE.Vector3();
+    const world = camera.userData._kineFollowTarget || (camera.userData._kineFollowTarget = new THREE.Vector3());
     bone.getWorldPosition(world);
-    const offset = new THREE.Vector3(0.5, 0.35, 0.9);
-    camera.position.lerp(world.clone().add(offset), 0.08);
-    look.lerp(world, 0.15);
-    camera.lookAt(look);
+    destination.copy(world).add(camera.userData._kineFollowOffset || (camera.userData._kineFollowOffset = new THREE.Vector3(0.5, 0.35, 0.9)));
+    if (state.instant) {
+      camera.position.copy(destination);
+      look.copy(world);
+    } else {
+      camera.position.lerp(destination, 0.08);
+      look.lerp(world, 0.15);
+    }
   } else {
-    camera.position.lerp(new THREE.Vector3(...state.pos), 0.12);
-    look.lerp(new THREE.Vector3(state.target.x, state.target.y, state.target.z), 0.2);
-    camera.lookAt(look);
+    destination.set(state.pos[0], state.pos[1], state.pos[2]);
+    const target = camera.userData._kineLookTarget || (camera.userData._kineLookTarget = new THREE.Vector3());
+    target.set(state.target.x, state.target.y, state.target.z);
+    if (state.instant) {
+      camera.position.copy(destination);
+      look.copy(target);
+    } else {
+      camera.position.lerp(destination, 0.12);
+      look.lerp(target, 0.2);
+    }
   }
+  camera.lookAt(look);
 }

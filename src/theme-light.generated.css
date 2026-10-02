@@ -473,7 +473,9 @@
 :root[data-theme="light"] .anatomy-hud-actions button { color: #06635e; background: rgba(6,99,94,.08); border: 1px solid rgba(6,99,94,.3) }
 :root[data-theme="light"] .anatomy-hud-actions button:hover, :root[data-theme="light"] .anatomy-hud-actions button:focus-visible { background: rgba(6,99,94,.16); border-color: #06635e }
 :root[data-theme="light"] .quiz-progress [role=progressbar] { background: #d1cfcb }
-:root[data-theme="light"] .objective-strip { background: rgba(231,229,225,.62) }
+:root[data-theme="light"] .objective-disclosure { background: rgba(231,229,225,.62) }
+:root[data-theme="light"] .objective-disclosure-summary:hover, :root[data-theme="light"] .objective-disclosure-summary:focus-visible { background: rgba(6,99,94,.035) }
+:root[data-theme="light"] .objective-disclosure-copy strong { color: #161e28 }
 :root[data-theme="light"] .guided-path { background: #e8e6e2 }
 :root[data-theme="light"] .guided-path-heading strong { color: #161f26 }
 :root[data-theme="light"] .guided-path-heading span { color: #50667c }
@@ -495,9 +497,11 @@
 :root[data-theme="light"] .guided-path-steps button small { color: #4e6778 }
 :root[data-theme="light"] .guided-path-steps button.review small { color: #6e4f0d }
 :root[data-theme="light"] .guided-path-steps button i { color: #4d6778 }
-:root[data-theme="light"] .module-path-nav button { color: #3f5463; background: rgba(231,229,225,.68) }
-:root[data-theme="light"] .module-path-nav button:hover:not(:disabled), :root[data-theme="light"] .module-path-nav button:focus-visible:not(:disabled) { color: #0b1617 }
-:root[data-theme="light"] .module-path-nav>span small { color: #4f6778 }
+:root[data-theme="light"] .guided-path.compact { background: rgba(231,229,225,.62) }
+:root[data-theme="light"] .guided-path-summary:hover, :root[data-theme="light"] .guided-path-summary:focus-visible { background: rgba(92,60,163,.045) }
+:root[data-theme="light"] .guided-path-summary-copy strong { color: #161f26 }
+:root[data-theme="light"] .guided-path-summary-copy small { color: #50667c }
+:root[data-theme="light"] .guided-path-summary-chevron { color: #3f5463 }
 :root[data-theme="light"] .respiration-layout .module-main { --resp-accent: #0e606c }
 :root[data-theme="light"] .respiration-board { background: radial-gradient(circle at 50% 43%,rgba(17,107,132,.14),transparent 38%),#eae8e4 }
 :root[data-theme="light"] .respiration-grid, :root[data-theme="light"] .breathing-grid { background-image: linear-gradient(rgba(58,106,131,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(58,106,131,.05) 1px,transparent 1px) }
@@ -846,10 +850,10 @@
 :root[data-theme="light"] .guided-step-mode span { color: #122225 }
 :root[data-theme="light"] .guided-step-action { color: #eeece8; background: #06635e; border: 1px solid #06635e }
 :root[data-theme="light"] .guided-step-action:hover, :root[data-theme="light"] .guided-step-action:focus-visible { color: #f1efeb; background: #001d1b; box-shadow: 0 0 18px rgba(6,99,94,.22) }
-:root[data-theme="light"] .guided-step-dots { color: #4e6777 }
-:root[data-theme="light"] .guided-step-dots span { border: 1px solid rgba(74,104,120,.22) }
-:root[data-theme="light"] .guided-step-dots span.active { color: #eeece8; background: #06635e; border-color: #06635e }
-:root[data-theme="light"] .guided-step-dots i { background: rgba(74,104,120,.4) }
+:root[data-theme="light"] .guided-step-card-actions { border-top: 1px solid rgba(6,99,94,.1) }
+:root[data-theme="light"] .guided-step-neighbor { color: #2f434d; background: rgba(231,229,225,.68) }
+:root[data-theme="light"] .guided-step-neighbor:hover, :root[data-theme="light"] .guided-step-neighbor:focus-visible { color: #0b1617; background: #d0cec9 }
+:root[data-theme="light"] .guided-step-neighbor.next { color: #06635e; border-color: rgba(6,99,94,.28) }
 :root[data-theme="light"] .reference-object-models { color: #4a6676; background: rgba(6,99,94,.045); border-left: 2px solid rgba(6,99,94,.55) }
 :root[data-theme="light"] .reference-object-overlay-note { color: #2d4e57; background: rgba(109,80,1,.045); border-left: 2px solid rgba(109,80,1,.72) }
 :root[data-theme="light"] .reference-object-overlay-note strong { color: #6d5003 }
@@ -939,9 +943,11 @@
 :root[data-theme="light"] .kine-actions button small { color: #4f647a }
 :root[data-theme="light"] .kine-actions button.active { border-color: #860b96; color: #321538; background: rgba(134,11,150,0.12) }
 :root[data-theme="light"] .kine-source-badge { color: #3f5468 }
-:root[data-theme="light"] .kine-cameras button { border: 1px solid #4e6580; background: #e5e3df; color: #1f2a36 }
-:root[data-theme="light"] .kine-cameras button kbd { border: 1px solid #4e667e; color: #4f647a }
-:root[data-theme="light"] .kine-cameras button.active { border-color: #126165; color: #011f21; background: rgba(18,97,101,0.1) }
+:root[data-theme="light"] .kine-camera-presets button { border: 1px solid #4e6580; background: #e5e3df; color: #1f2a36 }
+:root[data-theme="light"] .kine-camera-presets button kbd { border: 1px solid #4e667e; color: #4f647a }
+:root[data-theme="light"] .kine-camera-presets button.active { border-color: #126165; color: #011f21; background: rgba(18,97,101,0.1) }
+:root[data-theme="light"] .kine-dual-angle-controls .kine-dual-toggle { border: 1px solid #4e6580; background: #e5e3df; color: #1f2a36 }
+:root[data-theme="light"] .kine-dual-angle-controls .kine-dual-toggle.active { border-color: #126165; color: #011f21; background: rgba(18,97,101,0.1) }
 :root[data-theme="light"] .kine-toggle { color: #1f2a36 }
 :root[data-theme="light"] .kine-legend-name { color: #1f2a36 }
 :root[data-theme="light"] .kine-legend-name i.role-PM { color: #804036; border-color: rgba(162,29,14,0.6) }
@@ -1037,3 +1043,19 @@
 :root[data-theme="light"] .kine-pace { color: #3d5165 }
 :root[data-theme="light"] .outline-button.danger { border-color: rgba(162,29,14,0.5); color: #932d21 }
 :root[data-theme="light"] .outline-button.danger.armed { background: rgba(162,29,14,0.16) }
+:root[data-theme="light"] .kine-tour-dismiss { border: 1px solid rgba(18,97,101,0.42); color: #002225 }
+:root[data-theme="light"] .kine-tour-dismiss:hover { background: rgba(18,97,101,0.1) }
+:root[data-theme="light"] .kine-side > .kine-block:first-child .kine-tour { border-color: rgba(18,97,101,0.34); background: rgba(219,217,213,0.82) }
+:root[data-theme="light"] .kine-side > .kine-block:first-child .kine-tour strong { color: #011f21 }
+:root[data-theme="light"] .kine-side > .kine-block:first-child .kine-tour span { color: #2f4051 }
+:root[data-theme="light"] .kine-tools-disclosure { border: 1px solid #4d6582; background: rgba(244,242,238,0.52) }
+:root[data-theme="light"] .kine-tools-disclosure > summary:hover { background: rgba(18,97,101,0.06) }
+:root[data-theme="light"] .kine-tools-title strong { color: #161e28 }
+:root[data-theme="light"] .kine-tools-title small { color: #42566b }
+:root[data-theme="light"] .kine-tools-chevron { color: #3d5165 }
+:root[data-theme="light"] .kine-tools-disclosure[open] > summary { border-bottom: 1px solid #4d6582 }
+:root[data-theme="light"] .kine-tools-disclosure .kine-tool-toggle { border: 1px solid rgba(79,100,122,0.22); background: rgba(233,231,227,0.42) }
+:root[data-theme="light"] .kine-tools-disclosure .kine-quality { border: 1px solid rgba(79,100,122,0.22) }
+:root[data-theme="light"] .kine-tools-disclosure .kine-hint { background: rgba(225,223,219,0.86) }
+:root[data-theme="light"] .kine-tools-disclosure .kine-selfcam { background: rgba(226,224,220,0.8) }
+:root[data-theme="light"] .kine-tools-disclosure .kine-drill { background: rgba(226,224,220,0.8) }

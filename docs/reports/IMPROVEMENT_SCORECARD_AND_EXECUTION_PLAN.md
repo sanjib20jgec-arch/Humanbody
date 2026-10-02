@@ -56,7 +56,7 @@ Tasks:
 1. Commit this scorecard and the audit report with the release candidate.
 2. Add a permanent browser smoke test for all nine bays covering Explore → Simulate → Quiz, no page errors, and phone overflow.
 3. Add a machine-readable score or release checklist entry so future audits use the same dimensions.
-4. Preserve the current 28/28 browser result and the custom 9/9 bay audit as release evidence.
+4. Preserve the dated 28/28 browser run and custom 9/9 bay audit as historical baseline evidence; rerun the current 122-case suite before treating browser evidence as current.
 
 **Exit criteria:** A clean checkout can reproduce static verification, browser contracts, all-bay runtime smoke, and the scorecard evidence.
 

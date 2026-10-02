@@ -12,7 +12,7 @@ page.on('pageerror', (e) => errors.push('PAGE: ' + String(e).slice(0, 140)));
 page.on('console', (m) => { if (m.type() === 'error') errors.push('CON: ' + m.text().slice(0, 140)); });
 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForSelector('.kine-actions button', { timeout: 30000 });
-await page.evaluate(() => { const x = document.querySelector('.kine-tour button'); x && x.click(); });
+await page.evaluate(() => { const x = document.querySelector('.kine-tour-dismiss'); x && x.click(); });
 await page.waitForTimeout(2000);
 
 const layout = await page.evaluate(() => {

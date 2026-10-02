@@ -75,8 +75,12 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   const overlayRef = useRef(null);
   const ribbonHeadRef = useRef(null);
   const [tour, setTour] = useState(() => { try { return !sessionStorage.getItem('kine-tour'); } catch { return true; } });
+  const [toolsOpen, setToolsOpen] = useState(false);
   const comRef = useRef({ trail: [], ys: [], vert: null });
+  const [comVertical, setComVertical] = useState(null);
+  const comReadoutRef = useRef({ value: null, updatedAt: 0 });
   const comLineRef = useRef(null);
+  const qualityStageRef = useRef(null);
   const ghostRigRef = useRef(null);
   const blobRef = useRef(null);
   const trailRef = useRef(null);
@@ -223,6 +227,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     if (!low) renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
+    const qualityStage = { renderer, scene, profile, mount, key: null, spot: null, environmentTarget: null, rig: null, effectiveLow: low };
     scene.background = new THREE.Color(0x0a1220);
     scene.fog = new THREE.Fog(0x0a1220, 6, 13); // Phase 96 (V1): depth cueing
     const camera = new THREE.PerspectiveCamera(46, mount.clientWidth / mount.clientHeight, 0.05, 60);
@@ -236,6 +241,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     // Phase 96 (V1): 3-point stagecraft — warm key, cool fill, cyan rim.
     scene.add(new THREE.HemisphereLight(0xbfd8ff, 0x141b28, 0.7));
     const key = new THREE.DirectionalLight(0xfff1dd, 1.9);
+    qualityStage.key = key;
     key.position.set(2.5, 4, 2.5);
     if (!low) {
       key.castShadow = true;
@@ -254,13 +260,17 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     scene.add(rim);
     const glowTex = new THREE.CanvasTexture((() => { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'); const grd = g.createRadialGradient(128, 128, 10, 128, 128, 128); grd.addColorStop(0, 'rgba(120,190,220,0.5)'); grd.addColorStop(1, 'rgba(120,190,220,0)'); g.fillStyle = grd; g.fillRect(0, 0, 256, 256); return c; })());
     // Phase 106 (W2/W1): cinema-tier spotlight pool + subtle environment sheen.
+    // Keep these resources switchable so changing quality never tears down and
+    // reparses the motion clips or interrupts the learner's current position.
     if (!low) {
       const spot = new THREE.SpotLight(0xfff3e0, 26, 14, Math.PI / 5.2, 0.55, 1.6);
       spot.position.set(0.8, 4.6, 1.6);
       spot.target.position.set(0, 1, 0);
       scene.add(spot, spot.target);
+      qualityStage.spot = spot;
       const pmrem = new THREE.PMREMGenerator(renderer);
-      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      qualityStage.environmentTarget = pmrem.fromScene(new RoomEnvironment(), 0.04);
+      scene.environment = qualityStage.environmentTarget.texture;
       if ('environmentIntensity' in scene) scene.environmentIntensity = 0.22;
       pmrem.dispose();
     }
@@ -303,6 +313,8 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     const rig = buildPerformanceRig(THREE, { lowPoly: low });
     if (!low) rig.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     rigRef.current = rig;
+    qualityStage.rig = rig;
+    qualityStageRef.current = qualityStage;
     scene.add(rig.root);
     const ghost = buildPerformanceRig(THREE, { lowPoly: true });
     // Phase 100 (V5): ghost blends without depth-sort artifacts.
@@ -469,7 +481,15 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         if (c.trail.length > 160) c.trail.shift();
         c.ys.push(com.y);
         if (c.ys.length > 160) c.ys.shift();
-        if (c.ys.length > 60) c.vert = Math.round((Math.max(...c.ys) - Math.min(...c.ys)) * 100);
+        if (c.ys.length > 60) {
+          c.vert = Math.round((Math.max(...c.ys) - Math.min(...c.ys)) * 100);
+          const readout = comReadoutRef.current;
+          if (c.vert !== readout.value && now - readout.updatedAt >= 250) {
+            readout.value = c.vert;
+            readout.updatedAt = now;
+            setComVertical(c.vert);
+          }
+        }
         if (comLineRef.current && c.trail.length > 1) {
           comLineRef.current.geometry.setFromPoints(c.trail);
           comLineRef.current.geometry.attributes.position.needsUpdate = true;
@@ -506,7 +526,8 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
 
       const levels = act.activations(tn);
       // Phase 78: on low-power tiers the emissive glow updates at half rate.
-      if (!low || (actFrame++ % 2 === 0)) {
+      const lowQualityFrame = qualityStageRef.current?.effectiveLow ?? low;
+      if (!lowQualityFrame || (actFrame++ % 2 === 0)) {
         rig.setMusclesVisible(st.showMuscles);
         rig.resetMuscles();
         if (st.showMuscles) for (const [muscle, level] of Object.entries(levels)) rig.setMuscleActivation(muscle, level, rolesRef.current[muscle] || 'ST');
@@ -566,9 +587,10 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
             const b = rigRef.current.bones[tl.bone];
             const wp = new THREE.Vector3();
             b.getWorldPosition(wp);
-            tl.frame = (tl.frame || 0) + 1;
             const last = tl.pts[tl.pts.length - 1];
-            if (tl.frame % 3 === 0 && (!last || last.distanceToSquared(wp) > 1e-6)) tl.pts.push(wp);
+            // Sample every rendered frame; on low-refresh phones, dropping two
+            // of every three frames made a real trail impossible to accumulate.
+            if (!last || last.distanceToSquared(wp) > 1e-6) tl.pts.push(wp);
             if (tl.pts.length > 110) tl.pts.shift();
             if (tl.pts.length > 1) tl.line.geometry.setFromPoints(tl.pts);
           }
@@ -643,7 +665,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     renderer.xr.enabled = true; // Phase 94 (E6): optional immersive supplement
     xrRef.current = renderer;
     if (navigator.xr?.isSessionSupported) navigator.xr.isSessionSupported('immersive-vr').then((ok) => setXrAvailable(Boolean(ok))).catch(() => {});
-    if (import.meta.env.DEV) window.__kineDebug = { scene, camera, renderer, rig, THREE, ghost, strokes: strokesRef.current, trails: trailRef.current, markersVisible: () => rigRef.current?.markerGroup?.visible, outlineCount: () => Object.values(rigRef.current?.outlines || {}).filter((o) => o.visible).length, lastDualMode: () => lastDualMode, timeNow: () => stateRef.current.time, controls, orbitOn: () => orbitRef.current };
+    if (import.meta.env.DEV) window.__kineDebug = { scene, camera, renderer, rig, THREE, ghost, strokes: strokesRef.current, trails: trailRef.current, markersVisible: () => rigRef.current?.markerGroup?.visible, outlineCount: () => Object.values(rigRef.current?.outlines || {}).filter((o) => o.visible).length, lastDualMode: () => lastDualMode, timeNow: () => stateRef.current.time, activeAction: () => stateRef.current.actionId, playing: () => playRef.current, trailsEnabled: () => stateRef.current.trails, controls, orbitOn: () => orbitRef.current };
 
     const raycaster = new THREE.Raycaster();
     const onPick = (event) => {
@@ -678,10 +700,58 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
       controls.dispose();
       ghostRigRef.current?.dispose?.();
       rig.dispose();
+      if (qualityStageRef.current === qualityStage) qualityStageRef.current = null;
+      qualityStage.environmentTarget?.dispose();
       renderer.dispose();
       if (renderer.domElement.parentElement === mount) mount.removeChild(renderer.domElement);
     };
-  }, [reducedMotion, quality]);
+  }, [reducedMotion]);
+
+  // Quality switches adjust the live renderer and stage resources in place.
+  // Rebuilding the theater here used to reparse motion clips and interrupt the
+  // current lesson, especially on phones.
+  useEffect(() => {
+    const stage = qualityStageRef.current;
+    if (!stage) return;
+    const { renderer, scene, profile, mount, key, rig } = stage;
+    const low = quality === 'cinema' ? false : (quality === 'fast' ? true : (profile.lowPower || profile.formFactor === 'tv' || (profile.formFactor === 'phone' && !profile.capable)));
+
+    renderer.shadowMap.enabled = !low;
+    renderer.shadowMap.type = low ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, low ? 1 : (profile.formFactor === 'phone' ? 1.5 : 2)));
+    renderer.setSize(mount.clientWidth, mount.clientHeight, false);
+
+    key.castShadow = !low;
+    if (!low) {
+      key.shadow.mapSize.set(1024, 1024);
+      key.shadow.camera.left = -1.6; key.shadow.camera.right = 1.6;
+      key.shadow.camera.top = 2.6; key.shadow.camera.bottom = -0.4;
+      key.shadow.camera.near = 0.5; key.shadow.camera.far = 9;
+      key.shadow.bias = -0.0015;
+      key.shadow.needsUpdate = true;
+      if (!stage.spot) {
+        stage.spot = new THREE.SpotLight(0xfff3e0, 26, 14, Math.PI / 5.2, 0.55, 1.6);
+        stage.spot.position.set(0.8, 4.6, 1.6);
+        stage.spot.target.position.set(0, 1, 0);
+      }
+      scene.add(stage.spot, stage.spot.target);
+      if (!stage.environmentTarget) {
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        const room = new RoomEnvironment();
+        try { stage.environmentTarget = pmrem.fromScene(room, 0.04); }
+        finally { room.dispose?.(); pmrem.dispose(); }
+      }
+      scene.environment = stage.environmentTarget.texture;
+      if ('environmentIntensity' in scene) scene.environmentIntensity = 0.22;
+    } else {
+      if (stage.spot) scene.remove(stage.spot, stage.spot.target);
+      scene.environment = null;
+      stage.environmentTarget?.dispose();
+      stage.environmentTarget = null;
+    }
+    rig.root.traverse((object) => { if (object.isMesh) object.castShadow = !low; });
+    stage.effectiveLow = low;
+  }, [quality]);
 
   // Phase 77: selection isolates one muscle (solo teaching mode).
   useEffect(() => {
@@ -814,11 +884,6 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   const muscleList = useMemo(() => Object.keys(roles).sort(), [roles]);
 
   return <div className={`kinesiology-theater rep-${repMode}`} data-kinesiology-theater="true">
-    {tour && <div className="kine-tour" role="dialog" aria-label="New to 3D? quick tour">
-      <strong>New to 3D?</strong>
-      <span>1 · Drag the figure to orbit. 2 · Keys 1–7 switch camera angles; space pauses. 3 · Coloured glow = working muscle: red prime mover, amber synergist, cyan stabilizer.</span>
-      <button type="button" className="primary-cta" onClick={() => { setTour(false); try { sessionStorage.setItem('kine-tour', '1'); } catch {} }}>Got it</button>
-    </div>}
     <div className="kine-disclosure" role="note">
       <Icon name="info" size={14} />
       <span>Performance teaching model — simplified for education, not the certified BodyParts3D reference. {action.source === 'cmu' ? 'Motion: CMU Graphics Lab mocap (retargeted); data from mocap.cs.cmu.edu, NSF Grant #0196217.' : 'Authored teaching track — not motion capture.'}</span>
@@ -868,6 +933,10 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
       </div>}
       <aside className="kine-side">
         <div className="kine-block">
+          {tour && <div className="kine-tour" role="note" aria-label="Movement Theater quick tips">
+            <div className="kine-tour-copy"><strong>Quick start</strong><span>Drag to orbit · keys 1–7 change the camera · Space toggles playback. Choose an action, then select a muscle to explore its role.</span></div>
+            <button type="button" className="kine-tour-dismiss" onClick={() => { setTour(false); try { sessionStorage.setItem('kine-tour', '1'); } catch {} }}>Got it</button>
+          </div>}
           <span className="eyebrow">EVERYDAY ACTIONS</span>
           <div className="kine-actions" role="tablist" aria-label="Choose an action">
             {ACTIONS.map((a) => <button key={a.id} role="tab" aria-selected={a.id === actionId} className={a.id === actionId ? 'active' : ''} onClick={() => setActionId(a.id)}>{a.id}<small>{SOURCE_BADGE[a.source].split('—')[0].split('(')[0].trim()}</small></button>)}
@@ -886,10 +955,10 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
             {COACH_CUES[action.id].map((c) => <span key={c}>• {c}</span>)}
             <small>External-focus wording follows motor-learning evidence; anatomical wording available for study. Educators: action→curriculum mapping (BPT Kinesiology I/II, WCPT domains) in docs/CURRICULUM_ALIGNMENT.md; camera self-compare governed by docs/WEBCAM_PRIVACY_SPEC.md (E5).</small>
           </div>}
-          {action.id === 'walk' && gaitStats && <div className="kine-honesty" role="note" aria-label="Measured gait statistics versus typical values">
-            <strong>This capture:</strong> {gaitStats.speed} m/s · {gaitStats.cadence} steps/min · step ≈ {gaitStats.step} m{comRef.current.vert != null && <> · CoM vertical ≈ {comRef.current.vert} cm (typical 4–5)</>}{gaitStats.asym != null && <> · L/R step-time asymmetry ≈ {gaitStats.asym}% (healthy ≲ 5–10%)</>}
+          {action.id === 'walk' && gaitStats && <div className="kine-honesty" role="note" aria-label="Teaching gait estimates versus typical values">
+            <strong>This capture:</strong> {gaitStats.speed} m/s · {gaitStats.cadence} steps/min · step ≈ {gaitStats.step} m · CoM vertical excursion {comVertical == null ? 'not measured yet' : `≈ ${comVertical} cm (typical 4–5)`}{gaitStats.asym != null && <> · L/R step-time asymmetry ≈ {gaitStats.asym}% (healthy ≲ 5–10%)</>}
             <span>Typical comfortable adult gait ≈ 1.3 m/s · ~110 steps/min · 0.72 m step — this clip is a <em>leisurely</em> walk.</span>
-            <small>Teaching estimate — not a clinical measurement.</small>
+            <small>Teaching estimate from a simplified segment-weighted model — not a clinical measurement.</small>
           </div>}
           {action.source === 'cmu' && angleData && <div className="kine-angles" aria-label="Left leg sagittal joint angles">
             <span className="eyebrow">LEFT LEG ANGLES · SAGITTAL</span>
@@ -924,15 +993,19 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         <div className="kine-block">
           <span className="eyebrow">CAMERA ANGLES</span>
           <div className="kine-cameras">
-            {CAMERA_PRESETS.map((p) => <button key={p.id} className={p.id === cameraId ? 'active' : ''} onClick={() => setCameraId(p.id)} aria-label={`Camera: ${p.label} (${p.id === 'closeup' ? 'learner' : 'coach'} view)`} aria-pressed={p.id === cameraId}>{p.label}<i className={'kine-persp'}>{p.id === 'closeup' ? 'learner' : 'coach'}</i><kbd>{p.key}</kbd></button>)}
-            <small className={'kine-persp-note'}>Perspective evidence: novices often learn form best from an outside (coach) view; the learner view helps timing and feel.</small>
-          <div className="kine-term" role="group" aria-label="Representation density">
-            <span>Representation</span>
-            {[['3d', '3D'], ['both', '3D + data'], ['data', 'Data only']].map(([id, label]) => <button key={id} type="button" className={repMode === id ? 'active' : ''} aria-pressed={repMode === id} onClick={() => setRepMode(id)}>{label}</button>)}
-          </div>
-            <button type="button" className={`kine-dual-toggle ${dualView && dualMode === 'rear' ? 'active' : ''}`} aria-pressed={dualView && dualMode === 'rear'} onClick={() => { setDualMode('rear'); setDualView(true); }}>Dual angle<small>rear inset</small></button>
-            <button type="button" className={`kine-dual-toggle ${dualView && dualMode === 'offset' ? 'active' : ''}`} aria-pressed={dualView && dualMode === 'offset'} onClick={() => { setDualMode('offset'); setDualView(true); }}>A/B offset<small>ghost = half-cycle ahead</small></button>
-            <button type="button" className={`kine-dual-toggle ${dualView && dualMode === 'top' ? 'active' : ''}`} aria-pressed={dualView && dualMode === 'top'} onClick={() => { setDualMode('top'); setDualView(true); }}>Top-down<small>transverse foot placement</small></button>
+            <div className="kine-camera-presets" role="group" aria-label="Camera presets">
+              {CAMERA_PRESETS.map((p) => <button key={p.id} type="button" className={p.id === cameraId ? 'active' : ''} onClick={() => setCameraId(p.id)} aria-label={`Camera: ${p.label} (${p.id === 'closeup' ? 'learner' : 'coach'} view)`} aria-pressed={p.id === cameraId}>{p.label}<i className="kine-persp">{p.id === 'closeup' ? 'learner' : 'coach'}</i><kbd>{p.key}</kbd></button>)}
+            </div>
+            <small className="kine-persp-note">Perspective evidence: novices often learn form best from an outside (coach) view; the learner view helps timing and feel.</small>
+            <div className="kine-term kine-representation" role="group" aria-label="Representation density">
+              <span>Representation</span>
+              {[['3d', '3D'], ['both', '3D + data'], ['data', 'Data only']].map(([id, label]) => <button key={id} type="button" className={repMode === id ? 'active' : ''} aria-pressed={repMode === id} onClick={() => setRepMode(id)}>{label}</button>)}
+            </div>
+            <div className="kine-dual-angle-controls" role="group" aria-label="Additional camera views">
+              <button type="button" data-desktop-only="true" className={`kine-dual-toggle ${dualView && dualMode === 'rear' ? 'active' : ''}`} aria-pressed={dualView && dualMode === 'rear'} onClick={() => { setDualMode('rear'); setDualView(true); }}>Dual angle<small>rear inset</small></button>
+              <button type="button" className={`kine-dual-toggle ${dualView && dualMode === 'offset' ? 'active' : ''}`} aria-pressed={dualView && dualMode === 'offset'} onClick={() => { setDualMode('offset'); setDualView(true); }}>A/B offset<small>ghost = half-cycle ahead</small></button>
+              <button type="button" data-desktop-only="true" className={`kine-dual-toggle ${dualView && dualMode === 'top' ? 'active' : ''}`} aria-pressed={dualView && dualMode === 'top'} onClick={() => { setDualMode('top'); setDualView(true); }}>Top-down<small>transverse foot placement</small></button>
+            </div>
           </div>
         </div>
         <div className="kine-block">
@@ -969,8 +1042,14 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         </div>
       </aside>
     </div>
-    <div className="kine-transport">
-      <div className="kine-tools">
+    <div className={`kine-transport ${toolsOpen ? 'tools-open' : ''}`}>
+      <details className="kine-tools-disclosure" open={toolsOpen} onToggle={(event) => {
+        const open = event.currentTarget.open;
+        if (open !== toolsOpen) setToolsOpen(open);
+        if (!open) { setSelfCompare(false); setDrill(null); }
+      }}>
+        <summary><span className="kine-tools-title"><strong>More study tools</strong><small>Study modes, accessibility, annotation, comparison, and retrieval practice</small></span><span className="kine-tools-chevron" aria-hidden="true">⌄</span></summary>
+        <div className="kine-tools">
         <button type="button" className="kine-tool" aria-label="Step one frame back" onClick={() => { const m = stateRef.current.clipsMeta?.[action.clip?.replace('.bvh', '')]; setPlaying(false); stateRef.current.time = Math.max(0, stateRef.current.time - (m ? action.duration * m.frameTime : 1 / 30)); }}>−1f</button>
         <button type="button" className="kine-tool" aria-label="Step one frame forward" onClick={() => { const m = stateRef.current.clipsMeta?.[action.clip?.replace('.bvh', '')]; setPlaying(false); stateRef.current.time = Math.min(action.duration, stateRef.current.time + (m ? action.duration * m.frameTime : 1 / 30)); }}>+1f</button>
         {action.id === 'walk' && <button type="button" className="kine-tool" aria-label="Snap to nearest foot contact" onClick={() => { const w = stateRef.current.clipsMeta?.walk_cmu; const cs = stateRef.current.contacts; if (w && cs) { const tt = stateRef.current.time; const near = cs.map((c) => (c / w.frames) * action.duration).reduce((a, b) => (Math.abs(b - tt) < Math.abs(a - tt) ? b : a)); stateRef.current.time = near; setPlaying(false); } }}>⤓ contact</button>}
@@ -1014,7 +1093,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         <span>Your knee flexion: <b ref={selfKneeRef}>–</b> vs figure’s left knee in the readout above.</span>
         <small>{camError || 'Camera stays on your device. Frames are analysed in your browser and discarded instantly; nothing is stored or sent.'}</small>
       </div>}
-      {drill && <div className="kine-drill" role="dialog" aria-label="Retrieval practice drill">
+      {drill && <div className="kine-drill" role="region" aria-label="Retrieval practice drill">
         {drill.done ? <>
           <strong>Drill complete.</strong>
           <span>{drill.stats.correct} correct · {drill.stats.wrong} missed this session. Missed items were re-asked until correct (spaced, Leitner-lite).</span>
@@ -1027,6 +1106,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
           <button type="button" className="kine-tool" onClick={() => setDrill(null)}>stop</button>
         </>}
       </div>}
+      </details>
       <div className="kine-scrub-wrap">
         <input className="kine-scrub" type="range" min={0} max={1000} defaultValue={0} aria-label="Scrub timeline" onChange={(e) => { stateRef.current.time = (e.target.value / 1000) * action.duration; }} />
         {action.id === 'walk' && <div className="kine-ticks">{Object.entries({ 0: 'Initial contact', 10: 'End loading response', 30: 'End mid-stance', 50: 'End terminal stance', 60: 'End pre-swing (toe-off)', 73: 'End initial swing', 87: 'End mid-swing', 100: 'Cycle end' }).map(([p, label]) => <button key={p} type="button" className="kine-tick" style={{ left: `${p}%` }} title={`${p}% — ${label}`} aria-label={`Jump to ${p}% of gait cycle: ${label}`} onClick={() => { stateRef.current.time = (p / 100) * action.duration; }} />)}</div>}

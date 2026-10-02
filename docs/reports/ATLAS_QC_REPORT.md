@@ -1,6 +1,6 @@
 # BodyParts3D Atlas QA and Performance Report
 
-Generated: 2026-09-29  
+Generated: 2026-10-02  
 Manifest: BodyParts3D 4.0  
 Scope: Adult male reference anatomy · 2,234 source meshes  
 License: CC BY 4.0; see `public/ATTRIBUTION-BodyParts3D.md`.

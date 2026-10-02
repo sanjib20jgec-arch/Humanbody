@@ -25,7 +25,7 @@ const checks = [
   ['resume action uses saved view', app.includes('progress.lastModule === id') && app.includes('progress.lastView')],
   ['guided path UI', app.includes('function GuidedPath') && app.includes('guided-path-steps') && app.includes('aria-current={current ? \'step\' : undefined}')],
   ['guided path up next card', app.includes('function UpNextCard') && app.includes('UP NEXT IN THE GUIDED PATH') && app.includes('getGuidedRecommendation')],
-  ['guided path module navigation', app.includes('function ModulePathNav') && app.includes('Previous step') && app.includes('Next step')],
+  ['guided path navigation consolidated into step card', app.includes('const neighbors = getGuidedNeighbors(active.id, modules)') && app.includes('previous={neighbors.previous}') && app.includes('next={neighbors.next}') && app.includes('onStepSelect={onSelect}') && !app.includes('function ModulePathNav')],
   ['checkpoint pass threshold', app.includes('(correct / Math.max(total, 1)) * 100 >= 67') && progress.includes('passed:')],
   ['reusable 3D reference object contract', referenceObject.includes('BodyMap3DAtlas') && referenceObject.includes('Rotate 360°') && referenceObject.includes('source and license')],
   ['focused reference object fallback', referenceObject.includes('Accessible') || referenceObject.includes('accessible')],
