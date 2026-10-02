@@ -943,9 +943,11 @@
 :root[data-theme="light"] .kine-actions button small { color: #4f647a }
 :root[data-theme="light"] .kine-actions button.active { border-color: #860b96; color: #321538; background: rgba(134,11,150,0.12) }
 :root[data-theme="light"] .kine-source-badge { color: #3f5468 }
-:root[data-theme="light"] .kine-cameras button { border: 1px solid #4e6580; background: #e5e3df; color: #1f2a36 }
-:root[data-theme="light"] .kine-cameras button kbd { border: 1px solid #4e667e; color: #4f647a }
-:root[data-theme="light"] .kine-cameras button.active { border-color: #126165; color: #011f21; background: rgba(18,97,101,0.1) }
+:root[data-theme="light"] .kine-camera-presets button { border: 1px solid #4e6580; background: #e5e3df; color: #1f2a36 }
+:root[data-theme="light"] .kine-camera-presets button kbd { border: 1px solid #4e667e; color: #4f647a }
+:root[data-theme="light"] .kine-camera-presets button.active { border-color: #126165; color: #011f21; background: rgba(18,97,101,0.1) }
+:root[data-theme="light"] .kine-dual-angle-controls .kine-dual-toggle { border: 1px solid #4e6580; background: #e5e3df; color: #1f2a36 }
+:root[data-theme="light"] .kine-dual-angle-controls .kine-dual-toggle.active { border-color: #126165; color: #011f21; background: rgba(18,97,101,0.1) }
 :root[data-theme="light"] .kine-toggle { color: #1f2a36 }
 :root[data-theme="light"] .kine-legend-name { color: #1f2a36 }
 :root[data-theme="light"] .kine-legend-name i.role-PM { color: #804036; border-color: rgba(162,29,14,0.6) }

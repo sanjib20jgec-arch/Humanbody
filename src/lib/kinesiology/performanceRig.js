@@ -159,17 +159,104 @@ export function buildPerformanceRig(THREE, opts = {}) {
     else addMuscle(m, null);
   }
 
+  // Joint markers are kept in rig-local space and resynced after the pose is
+  // applied. This makes one visibility toggle control the complete marker set
+  // without parenting markers to animated bones or accumulating transforms.
+  const markerGroup = new THREE.Group();
+  markerGroup.name = 'joint-markers';
+  markerGroup.visible = false;
+  root.add(markerGroup);
+  const markerGeometry = new THREE.SphereGeometry(0.026, detail >= 20 ? 12 : 8, detail >= 20 ? 8 : 6);
+  const markerMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffe0b3,
+    transparent: true,
+    opacity: 0.96,
+    depthTest: false,
+    depthWrite: false
+  });
+  const jointSpecs = [
+    ['root', 'pelvis'], ['spine', 'spine'], ['chest', 'sternum'], ['neck', 'neck'], ['head', 'head'],
+    ['leftUpperArm', 'left shoulder'], ['leftForeArm', 'left elbow'], ['leftHand', 'left wrist'],
+    ['rightUpperArm', 'right shoulder'], ['rightForeArm', 'right elbow'], ['rightHand', 'right wrist'],
+    ['leftUpLeg', 'left hip'], ['leftLeg', 'left knee'], ['leftFoot', 'left ankle'],
+    ['rightUpLeg', 'right hip'], ['rightLeg', 'right knee'], ['rightFoot', 'right ankle']
+  ];
+  const jointMarkers = jointSpecs.map(([boneName, label]) => {
+    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+    marker.name = `joint-marker-${label.replaceAll(' ', '-')}`;
+    marker.userData.joint = boneName;
+    marker.renderOrder = 20;
+    markerGroup.add(marker);
+    return { bone: bones[boneName], marker };
+  });
+  const markerPosition = new THREE.Vector3();
+  const updateJointMarkers = () => {
+    root.updateMatrixWorld(true);
+    for (const { bone, marker } of jointMarkers) {
+      bone.getWorldPosition(markerPosition);
+      marker.position.copy(root.worldToLocal(markerPosition));
+    }
+  };
+
+  const outlines = {};
+  const baseMuscleColor = new THREE.Color(0x8a3040);
+  const roleColorCache = Object.fromEntries(
+    Object.entries(ROLE_COLORS).map(([role, color]) => [role, new THREE.Color(color)])
+  );
+  const displayColor = new THREE.Color();
+  let heatModeEnabled = false;
+
   return {
-    root, bones, muscles, bodyGroup, muscleGroup,
+    root, bones, muscles, bodyGroup, muscleGroup, markerGroup, outlines,
     setMuscleActivation(key, level, role) {
       const entry = muscles[key];
       if (!entry) return;
-      entry.mat.emissive = new THREE.Color(ROLE_COLORS[role] ?? ROLE_COLORS.ST);
-      entry.mat.emissiveIntensity = level * 1.6;
-      entry.mat.color = new THREE.Color(0x8a3040).lerp(new THREE.Color(ROLE_COLORS[role] ?? ROLE_COLORS.ST), Math.min(1, level) * 0.65);
+      const activation = Math.max(0, Math.min(1, Number(level) || 0));
+      if (heatModeEnabled) displayColor.setHSL(0.67 * (1 - activation), 0.92, 0.54);
+      else displayColor.copy(roleColorCache[role] || roleColorCache.ST);
+      entry.mat.emissive.copy(displayColor);
+      entry.mat.emissiveIntensity = heatModeEnabled ? 0.2 + activation * 1.3 : activation * 1.6;
+      entry.mat.color.copy(baseMuscleColor).lerp(displayColor, heatModeEnabled ? 0.45 + activation * 0.55 : activation * 0.65);
+    },
+    setHeatMode(enabled) {
+      heatModeEnabled = Boolean(enabled);
+    },
+    heatOn() {
+      return heatModeEnabled;
+    },
+    setMarkersVisible(visible) {
+      markerGroup.visible = Boolean(visible);
+      if (markerGroup.visible) updateJointMarkers();
+    },
+    setMuscleOutline(key, visible) {
+      Object.values(outlines).forEach((outline) => { outline.visible = false; });
+      if (!visible || !key || !muscles[key]) return;
+      let outline = outlines[key];
+      if (!outline) {
+        const entry = muscles[key];
+        const material = new THREE.MeshBasicMaterial({
+          color: 0xc9f6f9,
+          side: THREE.BackSide,
+          transparent: true,
+          opacity: 0.9,
+          depthTest: true,
+          depthWrite: false
+        });
+        outline = new THREE.Mesh(entry.mesh.geometry, material);
+        outline.name = `muscle-outline-${key}`;
+        outline.scale.setScalar(1.12);
+        outline.renderOrder = 21;
+        entry.mesh.add(outline);
+        outlines[key] = outline;
+      }
+      outline.visible = true;
     },
     resetMuscles() {
-      Object.values(muscles).forEach(({ mat }) => { mat.emissiveIntensity = 0; mat.color = new THREE.Color(0x8a3040); });
+      Object.values(muscles).forEach(({ mat }) => {
+        mat.emissiveIntensity = 0;
+        mat.emissive.set(0x000000);
+        mat.color.copy(baseMuscleColor);
+      });
     },
     setMusclesVisible(visible) {
       Object.values(muscles).forEach(({ mesh }) => { mesh.visible = visible; });

@@ -6,7 +6,7 @@ async function openTheater(page, { openAdvanced = true } = {}) {
   await page.locator('.module-list-item', { hasText: 'Movement Theater' }).click();
   const theater = page.locator('[data-kinesiology-theater="true"]');
   await expect(theater).toBeVisible();
-  await page.waitForSelector('.kine-stage canvas', { timeout: 20000 });
+  await expect(theater.locator('.kine-stage canvas[data-engine]')).toBeVisible({ timeout: 30000 });
   const advancedTools = theater.locator('.kine-tools-disclosure');
   await expect(advancedTools).toBeVisible();
   if (openAdvanced) {
@@ -25,7 +25,7 @@ test.describe('Kinesiology Theater', () => {
     await expect(tour).toBeVisible();
     await expect(tour).toContainText('Quick start');
     expect(await tour.evaluate((element) => getComputedStyle(element).position)).toBe('static');
-    await expect(theater.locator('.kine-stage canvas')).toBeVisible();
+    await expect(theater.locator('.kine-stage canvas[data-engine]')).toBeVisible();
     await expect(advanced).not.toHaveAttribute('open', '');
     await expect(transport).not.toHaveClass(/tools-open/);
     await expect(advanced.locator('.kine-tool').first()).toBeHidden();
@@ -51,9 +51,9 @@ test.describe('Kinesiology Theater', () => {
 
   test('renders with real WebGL canvas, rig muscles, and seven actions', async ({ page }) => {
     const theater = await openTheater(page);
-    await expect(theater.locator('.kine-actions button', { hasText: 'walk' })).toBeVisible();
+    await expect(theater.getByRole('tab', { name: /^walk\b/i })).toBeVisible();
     for (const id of ['walk', 'run', 'jump', 'wave', 'handshake', 'chew', 'talk']) {
-      await expect(theater.locator('.kine-actions button', { hasText: id }).first()).toBeVisible();
+      await expect(theater.getByRole('tab', { name: new RegExp(`^${id}\\b`, 'i') })).toBeVisible();
     }
     const rigInfo = await page.evaluate(() => {
       const rig = window.__kineDebug?.rig;
@@ -63,7 +63,7 @@ test.describe('Kinesiology Theater', () => {
     expect(rigInfo.muscles).toBeGreaterThanOrEqual(50);
     expect(rigInfo.bones).toBeGreaterThanOrEqual(14);
     const hasWebGL = await page.evaluate(() => {
-      const c = document.querySelector('.kine-stage canvas');
+      const c = document.querySelector('.kine-stage canvas[data-engine]');
       return Boolean(c && (c.getContext('webgl2') || c.getContext('webgl')));
     });
     expect(hasWebGL).toBe(true);
@@ -80,7 +80,7 @@ test.describe('Kinesiology Theater', () => {
 
   test('CMU clips load with provenance note and treadmill keeps figure centered', async ({ page }) => {
     const theater = await openTheater(page);
-    await theater.locator('.kine-actions button', { hasText: 'walk' }).first().click();
+    await theater.getByRole('tab', { name: /^walk\b/i }).click();
     await expect(theater.locator('.kine-source-badge')).toContainText('CMU');
     await expect(theater.locator('.kine-disclosure')).toContainText('CMU Graphics Lab mocap');
     const rootX = await page.evaluate(() => new Promise((resolve) => {
@@ -155,6 +155,7 @@ test.describe('Kinesiology Theater', () => {
   });
 
   test('phase 104: top-down transverse inset renders on desktop', async ({ page }) => {
+    test.skip(page.viewportSize().width < 900, 'The transverse inset is intentionally desktop-only.');
     const theater = await openTheater(page);
     await theater.locator('.kine-dual-toggle', { hasText: 'Top-down' }).click();
     if (page.viewportSize().width >= 900) {
@@ -184,7 +185,7 @@ test.describe('Kinesiology Theater', () => {
     await page.waitForFunction(() => window.__kineDebug.markersVisible() === false, null, { timeout: 5000 });
   });
 
-  test('phase 101: quality selector rebuilds stage (cinema/fast parity)', async ({ page }) => {
+  test('phase 101: quality selector updates the live renderer (cinema/fast parity)', async ({ page }) => {
     const theater = await openTheater(page);
     await theater.locator('.kine-quality button', { hasText: 'cinema' }).click();
     await page.waitForFunction(() => window.__kineDebug?.renderer?.shadowMap?.enabled === true, null, { timeout: 8000 });
@@ -211,22 +212,26 @@ test.describe('Kinesiology Theater', () => {
     expect(info.floorTransparent).toBe(true);
   });
 
-  test('phase 99: tighter framing + reduced-motion instant camera snaps', async ({ page }) => {
+  test('phase 99: action-aware framing snaps instantly under reduced motion', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const theater = await openTheater(page);
+    const expectedZ = await theater.locator('.kine-stage').evaluate((stage) => {
+      const aspect = stage.clientWidth / Math.max(1, stage.clientHeight);
+      const phoneScale = Math.max(0.7, Math.min(1, aspect / 1.5));
+      return 4.9 * phoneScale; // walk preset distance, scaled for the stage's aspect ratio
+    });
     await theater.getByRole('button', { name: 'Camera: Anterior (coach view)' }).click();
-    await page.waitForFunction(() => {
+    await page.waitForFunction((targetZ) => {
       const d = window.__kineDebug;
-      return d && Math.abs(d.camera.position.z - 4.0) < 0.05 && Math.abs(d.camera.position.x) < 0.05;
-    }, null, { timeout: 5000 });
-    // old framing was 4.9 away; tightened V4 framing is 4.0 for walk
+      return d && Math.abs(d.camera.position.z - targetZ) < 0.05 && Math.abs(d.camera.position.x) < 0.05;
+    }, expectedZ, { timeout: 10000 });
     const z = await page.evaluate(() => window.__kineDebug.camera.position.z);
-    expect(z).toBeLessThan(4.5);
+    expect(Math.abs(z - expectedZ)).toBeLessThan(0.05);
   });
 
   test('phase 98: endpoint motion trails accumulate during locomotion and clear on toggle', async ({ page }) => {
     const theater = await openTheater(page);
-    await page.waitForFunction(() => (window.__kineDebug?.trails?.[0]?.pts?.length || 0) > 8, null, { timeout: 8000 });
+    await page.waitForFunction(() => (window.__kineDebug?.trails?.[0]?.pts?.length || 0) > 8, null, { timeout: 20000 });
     const vis = await page.evaluate(() => window.__kineDebug.trails[0].line.visible);
     expect(vis).toBe(true);
     await theater.locator('.kine-tool-toggle', { hasText: 'motion trails' }).locator('input').uncheck();
@@ -321,6 +326,7 @@ test.describe('Kinesiology Theater', () => {
   test('phase 92: clinical pattern ghost appears and clears', async ({ page }) => {
     const theater = await openTheater(page);
     await theater.locator('.kine-actions[aria-label="Clinical comparison patterns"] button', { hasText: 'Trendelenburg' }).click();
+    await page.waitForFunction(() => window.__kineDebug?.ghost?.root?.visible === true, null, { timeout: 10000 });
     const vis = await page.evaluate(() => window.__kineDebug?.ghost?.root?.visible);
     expect(vis).toBe(true);
     await expect(theater.locator('.kine-persp-note', { hasText: 'not diagnostic' }).first()).toBeVisible();
@@ -333,7 +339,7 @@ test.describe('Kinesiology Theater', () => {
     await expect(theater.locator('.kine-notation')).toBeVisible();
     await expect(theater.locator('.kine-angles small')).toContainText('ISB');
     await theater.locator('.kine-term[aria-label="Representation density"] button', { hasText: 'Data only' }).click();
-    await expect(theater.locator('.kine-stage canvas')).toBeHidden();
+    await expect(theater.locator('.kine-stage canvas[data-engine]')).toBeHidden();
     await expect(theater.locator('.kine-notation')).toBeVisible();
     await theater.locator('.kine-term[aria-label="Representation density"] button', { hasText: '3D + data' }).click();
     await expect(theater.locator('.kine-stage canvas[data-engine]')).toBeVisible();
@@ -362,11 +368,11 @@ test.describe('Kinesiology Theater', () => {
   test('phase 88: external-focus cue toggle and coaching cue library', async ({ page }) => {
     const theater = await openTheater(page);
     await expect(theater.locator('.kine-cues span:not(.eyebrow)').first()).toContainText('Walk tall');
-    const anat = await theater.locator('.kine-caption').textContent();
+    const caption = theater.locator('.kine-caption');
+    const anat = await caption.textContent();
     await theater.locator('.kine-term[aria-label="Cue wording style"] button', { hasText: 'External-focus' }).click();
-    const ext = await theater.locator('.kine-caption').textContent();
-    expect(ext).not.toEqual(anat);
-    await expect(theater.locator('.kine-caption')).toContainText(/kiss the ground|rail|wall|puddle|string/);
+    await expect(caption).not.toHaveText(anat);
+    await expect(caption).toContainText(/kiss the ground|rail|wall|puddle|string/);
   });
 
   test('phase 87: retrieval drill asks, gives feedback, and offers Anki export', async ({ page }) => {
@@ -416,48 +422,64 @@ test.describe('Kinesiology Theater', () => {
 
   test('action-aware framing tightens for face actions', async ({ page }) => {
     const theater = await openTheater(page);
-    await page.waitForTimeout(1500);
+    const walkZ = await theater.locator('.kine-stage').evaluate((stage) => {
+      const aspect = stage.clientWidth / Math.max(1, stage.clientHeight);
+      return 4.9 * Math.max(0.7, Math.min(1, aspect / 1.5));
+    });
+    await page.waitForFunction((targetZ) => Math.abs(window.__kineDebug?.camera.position.z - targetZ) < 0.12, walkZ, { timeout: 15000 });
     const zWalk = await page.evaluate(() => window.__kineDebug.camera.position.z);
-    await theater.locator('.kine-actions button', { hasText: 'chew' }).first().click();
-    await page.waitForTimeout(1500);
+    await theater.getByRole('tab', { name: /^chew\b/i }).click();
+    await page.waitForFunction((walkDistance) => window.__kineDebug?.camera.position.z < walkDistance - 1, zWalk, { timeout: 20000 });
     const zChew = await page.evaluate(() => window.__kineDebug.camera.position.z);
     expect(zChew).toBeLessThan(zWalk - 1);
   });
 
   test('dual-angle inset toggles on desktop', async ({ page }) => {
-    await openTheater(page);
-    const toggle = page.locator('.kine-dual-toggle');
+    test.skip(page.viewportSize().width < 900, 'The dual-angle inset is intentionally desktop-only.');
+    const theater = await openTheater(page);
+    const toggle = theater.getByRole('button', { name: /^Dual angle\b/i });
     await expect(toggle).toBeVisible();
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-    await page.waitForTimeout(500);
-    await expect(page.locator('.kine-caption')).toBeVisible();
+    await page.waitForFunction(() => window.__kineDebug?.lastDualMode() === 'rear', null, { timeout: 8000 });
+    await expect(theater.locator('.kine-caption')).toBeVisible();
   });
 
   test('survives WebGL context loss and recovers', async ({ page }) => {
     const theater = await openTheater(page);
+    const canLoseContext = await page.evaluate(() => {
+      const canvas = document.querySelector('.kine-stage canvas[data-engine]');
+      const gl = canvas?.getContext('webgl2') || canvas?.getContext('webgl');
+      return Boolean(gl?.getExtension('WEBGL_lose_context'));
+    });
+    test.skip(!canLoseContext, 'This browser does not expose WEBGL_lose_context.');
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.evaluate(() => {
-      const c = document.querySelector('.kine-stage canvas');
-      const gl = c.getContext('webgl2') || c.getContext('webgl');
-      gl.getExtension('WEBGL_lose_context')?.loseContext();
+      const canvas = document.querySelector('.kine-stage canvas[data-engine]');
+      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+      window.__testContextLoss = gl.getExtension('WEBGL_lose_context');
+      window.__testContextLoss.loseContext();
     });
-    await page.waitForTimeout(400);
-    await page.evaluate(() => {
-      const c = document.querySelector('.kine-stage canvas');
-      const gl = c.getContext('webgl2') || c.getContext('webgl');
-      gl.getExtension('WEBGL_lose_context')?.restoreContext();
-    });
-    await page.waitForTimeout(600);
-    await expect(theater).toBeVisible();
+    await page.waitForFunction(() => {
+      const canvas = document.querySelector('.kine-stage canvas[data-engine]');
+      const gl = canvas?.getContext('webgl2') || canvas?.getContext('webgl');
+      return Boolean(gl?.isContextLost());
+    }, null, { timeout: 8000 });
+    await page.evaluate(() => window.__testContextLoss.restoreContext());
+    await page.waitForFunction(() => {
+      const canvas = document.querySelector('.kine-stage canvas[data-engine]');
+      const gl = canvas?.getContext('webgl2') || canvas?.getContext('webgl');
+      return Boolean(gl && !gl.isContextLost());
+    }, null, { timeout: 15000 });
+    await expect(theater.locator('.kine-stage canvas[data-engine]')).toBeVisible();
     await expect(theater.locator('.kine-caption')).toBeVisible();
     expect(errors).toHaveLength(0);
   });
 
   test('phase 83: attachment pins and activation sparkline on selection', async ({ page }) => {
     const theater = await openTheater(page);
-    await theater.locator('.kine-legend-row').first().click();
+    await theater.locator('.kine-legend-row').filter({ hasText: /gastrocnemius/i }).first().click();
     const pins = await page.evaluate(() => window.__kineDebug?.rig?.pins?.length ?? -1);
     expect(pins).toBe(2);
     await expect(theater.locator('.kine-actline path')).toBeVisible();

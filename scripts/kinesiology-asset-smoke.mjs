@@ -99,6 +99,40 @@ for (const action of ACTIONS) {
 }
 assert(rig.muscles['gluteusMedius.L'] && rig.muscles['lateralPterygoid.R'] && rig.muscles['adductorPollicis.L'], 'sided midline muscle keys built');
 
-console.log('HBL kinesiology asset smoke passed (' + Object.keys(rig.muscles).length + ' muscle meshes, curated roles verified).');
+// Phases 102–103: the rig owns functional, pose-following joint markers,
+// selected-muscle outlines, and a reversible activation heat palette.
+assert.equal(rig.markerGroup.visible, false, 'joint markers start hidden');
+assert.equal(rig.markerGroup.children.length, 17, 'expected the major-joint marker set');
+rig.setMarkersVisible(true);
+assert.equal(rig.markerGroup.visible, true, 'joint marker toggle enables its group');
+{
+  const headMarker = rig.markerGroup.children.find((marker) => marker.userData.joint === 'head');
+  const headPosition = rig.bones.head.getWorldPosition(new THREE.Vector3());
+  rig.root.worldToLocal(headPosition);
+  assert(headMarker.position.distanceTo(headPosition) < 1e-6, 'head marker tracks its articulated bone');
+}
+rig.setMarkersVisible(false);
+assert.equal(rig.markerGroup.visible, false, 'joint marker toggle disables its group');
+{
+  const key = 'quadriceps.L';
+  const material = rig.muscles[key].mat;
+  rig.setHeatMode(true);
+  assert.equal(rig.heatOn(), true, 'heat mode reports enabled');
+  rig.setMuscleActivation(key, 0.8, 'PM');
+  const heatColor = material.color.getHexString();
+  rig.setHeatMode(false);
+  rig.resetMuscles();
+  rig.setMuscleActivation(key, 0.8, 'PM');
+  assert.equal(rig.heatOn(), false, 'heat mode reports disabled');
+  assert.notEqual(material.color.getHexString(), heatColor, 'heat palette differs from curated role color');
+  rig.setMuscleOutline(key, true);
+  assert.equal(rig.outlines[key].visible, true, 'selected muscle outline is visible');
+  assert.equal(Object.values(rig.outlines).filter((outline) => outline.visible).length, 1, 'only one selected muscle is outlined');
+  rig.setMuscleOutline(key, false);
+  assert.equal(Object.values(rig.outlines).filter((outline) => outline.visible).length, 0, 'clearing selection hides the outline');
+}
+rig.dispose();
+
+console.log('HBL kinesiology asset smoke passed (' + Object.keys(rig.muscles).length + ' muscle meshes, curated roles, markers, outlines, and heat mode verified).');
 console.log('clip analysis: speed (m/s horizontal) + root-vert range in cm (root bone vertical travel, NOT centre-of-mass displacement)');
 console.table ? console.table(analysis) : console.log(analysis);

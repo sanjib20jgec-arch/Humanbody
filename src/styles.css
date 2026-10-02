@@ -1802,10 +1802,16 @@ body.ff-tv .primary-cta, body.ff-tv .outline-button { min-height: 52px; font-siz
 .kine-actions button small { font-size: 10px; color: #7d93ab; font-weight: 500; }
 .kine-actions button.active { border-color: #e879f9; color: #f5d0fe; background: rgba(232, 121, 249, 0.12); }
 .kine-source-badge { font-size: 10.5px; color: #8fa6bd; letter-spacing: 0.04em; }
-.kine-cameras { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
-.kine-cameras button { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; min-height: 44px; padding: 8px 10px; border-radius: 9px; border: 1px solid #21374f; background: #0d1a2b; color: #c9d8e8; font: inherit; font-size: 11.5px; cursor: pointer; }
-.kine-cameras button kbd { font-size: 9px; border: 1px solid #2b4258; border-radius: 4px; padding: 1px 4px; color: #7d93ab; }
-.kine-cameras button.active { border-color: #4dd8df; color: #c9f6f9; background: rgba(77, 216, 223, 0.1); }
+.kine-cameras { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.kine-camera-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; min-width: 0; }
+.kine-camera-presets button { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; min-height: 44px; padding: 8px 10px; border-radius: 9px; border: 1px solid #21374f; background: #0d1a2b; color: #c9d8e8; font: inherit; font-size: 11.5px; cursor: pointer; }
+.kine-camera-presets button kbd { font-size: 9px; border: 1px solid #2b4258; border-radius: 4px; padding: 1px 4px; color: #7d93ab; }
+.kine-camera-presets button.active { border-color: #4dd8df; color: #c9f6f9; background: rgba(77, 216, 223, 0.1); }
+.kine-dual-angle-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; min-width: 0; }
+.kine-dual-angle-controls .kine-dual-toggle { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; min-width: 0; min-height: 44px; padding: 7px 9px; border: 1px solid #21374f; border-radius: 9px; background: #0d1a2b; color: #c9d8e8; font: inherit; font-size: 11px; text-align: left; cursor: pointer; }
+.kine-dual-angle-controls .kine-dual-toggle.active { border-color: #4dd8df; color: #c9f6f9; background: rgba(77, 216, 223, 0.1); }
+.kine-representation { flex-wrap: wrap; margin-top: 0; }
+.kine-persp-note { grid-column: auto; min-width: 0; margin: 0; line-height: 1.45; }
 .kine-toggle { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #c9d8e8; }
 .kine-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow: auto; }
 .kine-legend li { display: grid; grid-template-columns: 1fr; gap: 3px; }
@@ -1857,7 +1863,10 @@ body.ff-tv .kine-stage { min-height: 62vh; }
 
 /* Phase 79: dual-angle toggle (desktop-only) */
 .kine-dual-toggle small { display: block; font-size: 9px; opacity: 0.7; }
-@media (max-width: 899px) { .kine-dual-toggle { display: none; } }
+@media (max-width: 899px) {
+  .kine-dual-angle-controls { grid-template-columns: 1fr; }
+  .kine-dual-angle-controls .kine-dual-toggle[data-desktop-only="true"] { display: none; }
+}
 
 /* Phase 81: terminology control, honesty panel, gait ticks */
 .kine-term { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
@@ -1946,7 +1955,8 @@ body.ff-tv .kine-stage { min-height: 62vh; }
   .kine-side { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
   .kine-side > * { min-width: 0; }
   .kine-side > .kine-block:first-child { grid-column: 1 / -1; }
-  .kine-cameras { grid-template-columns: 1fr; }
+  .kine-camera-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kine-dual-angle-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kine-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 280px; }
   /* Intro cards compress: targets stack, guided path becomes a swipe rail */
   .objective-strip { grid-template-columns: 1fr; gap: 10px; padding: 12px 14px; }
