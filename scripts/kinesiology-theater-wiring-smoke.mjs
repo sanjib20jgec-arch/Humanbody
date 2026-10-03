@@ -58,6 +58,8 @@ must(/setMarkersVisible\?\.\(markersOn\)/.test(theater) && /setHeatMode\?\.\(hea
 // ---- HUD publication rate ---------------------------------------------------
 must(/createHudScheduler\(15\)/.test(theater), 'The HUD scheduler is no longer pinned to 15 Hz');
 must(/hudSchedRef\.current\.due\(now\)/.test(theater), 'The HUD output is not gated by the scheduler');
+must(/hudDirty && hudSchedRef\.current\.due\(now\)/.test(theater), 'The HUD publishes without an actual change (an idle scene must write 0 nodes per frame)');
+must(/meterValueRef\.current\[muscle\]/.test(theater), 'The 54 legend meters are still rewritten every publication, even when the bar does not move');
 must(/hudSchedRef\.current\.invalidate\(\)/.test(theater), 'Discrete telemetry events no longer bypass the HUD gate');
 must(/\.style\.transform = `scaleX\(/.test(theater), 'Legend meters no longer use a compositor-only transform');
 

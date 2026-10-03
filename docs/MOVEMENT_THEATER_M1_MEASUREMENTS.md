@@ -54,7 +54,7 @@ copy(JSON.stringify(__kineDebug.report(), null, 2));
 |---|---|---|
 | Scrub latency < 16 ms p95 | `report().scrubLatencyMs` after 20 drag samples (script below) | no — device run |
 | `−1f / +1f` = exactly 1 frame, all clips | `verify:kine-timeline` + `tests/browser/kinesiology-phase1.spec.js` | **yes** |
-| HUD DOM writes ≤ 20 per frame at 60 FPS, 0 while paused | `report().hud.domWritesPerSecond`, `report().frames.medianMs` | partly (write counting is in-app, the 60 FPS half needs a device) |
+| HUD DOM writes ≤ 20 per frame at 60 FPS, 0 while paused | `report().hud.domWritesPerSecond`, `report().hud.peakWritesPerPublication`, `report().frames.medianMs` | **yes for the paused half** (`tests/browser/kinesiology-phase1.spec.js` asserts exactly 0 writes over 1 s while paused, with the render loop still advancing) · the ≤ 20/frame half needs a device |
 | Zero frames > 33 ms over a 60 s play run | `report().frames.over33ms` after a 60 s run | no — device run |
 | Angle readout within ±1° of ground truth | `verify:kine-timeline` (both readout paths vs a synthetic pose) | **yes** |
 | Phase label changes ≤ 1 per 150 ms in a walk cycle | `verify:kine-timeline` (240-frame noisy cycle) | **yes** |
@@ -115,7 +115,15 @@ Measured in the sandbox with the pre-Phase-1 code: stage construction
 | portrait ↔ landscape | | | | | | | |
 
 Scrub latency (20 samples): p95 = ____ ms · max = ____ ms
-HUD writes: ____ per second (nominal 15 Hz × ~20 fields = ~300/s) · paused: ____
+HUD writes: ____ per second · peak per publication: ____ · paused: ____ (expected **0**)
+
+*Write accounting as built:* one publication touches ≤ 3 joint rows × 8 fields (24),
+≤ 54 legend meters (only bars that move ≥ 1.5 % of full scale; 0 when the scene is
+idle), ≤ 11 labels/aria attributes — so ≈ 35–89 writes per publication, ≤ 15
+publications/s *only while the clock moves*. Per-frame average at 60 FPS is
+therefore ≈ 0.6–1.5 writes when idle and ≈ 9–22 while playing; if a device shows
+`peakWritesPerPublication` above ~90 or writes while paused, that is a regression in
+the change gate, not a budget question.
 
 ### Other devices
 

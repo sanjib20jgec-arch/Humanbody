@@ -239,6 +239,27 @@ test.describe('Movement Theater — Phase 1 telemetry HUD', () => {
     expect(counts.mutations).toBeLessThanOrEqual(30);
   });
 
+  // Phase 1 gate (Masterplan §6): "0 DOM writes per frame while paused".
+  // The render loop keeps drawing (and the camera can still be orbited) but an
+  // idle scene must not rewrite ~90 HUD nodes 15 times a second.
+  test('a paused scene writes nothing to the HUD', async ({ page }) => {
+    const theater = await openTheater(page);
+    await expect(theater.locator('.kine-rom')).toBeVisible();
+    await page.evaluate(() => { const dbg = window.__kineDebug; if (dbg.playing()) dbg.time().pause(); });
+    await page.waitForTimeout(400); // let the pause settle before measuring
+    const sample = await page.evaluate(() => new Promise((resolve) => {
+      const before = { writes: window.__kinePerf.domWrites, frames: window.__kinePerf.frameCount };
+      setTimeout(() => resolve({
+        writes: window.__kinePerf.domWrites - before.writes,
+        frames: window.__kinePerf.frameCount - before.frames,
+        paused: !window.__kineDebug.playing(),
+      }), 1000);
+    }));
+    expect(sample.paused).toBe(true);
+    expect(sample.frames).toBeGreaterThan(20); // the figure is still rendering
+    expect(sample.writes).toBe(0);             // ...but the HUD is silent
+  });
+
   test('the telemetry panel never claims clinical measurement', async ({ page }) => {
     const theater = await openTheater(page);
     await expect(theater.locator('.kine-rom-note')).toContainText('not a clinical measurement');

@@ -76,6 +76,7 @@ const ROLE_ORDER = ['PM', 'SY', 'AN', 'ST', 'IN'];
 export default function KinesiologyTheater({ activeView, reducedMotion, playing, setPlaying, speed, setSpeed, apiRef }) {
   const mountRef = useRef(null);
   const meterRefs = useRef({});
+  const meterValueRef = useRef({});
   const [actionId, setActionId] = useState('walk');
   const [cameraId, setCameraId] = useState('anterior');
   const orbitRef = useRef(false); // Phase 119 (R10): user grab temporarily frees any preset camera
@@ -222,9 +223,8 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   const scrubRef = useRef(null);
   const scrubDragRef = useRef(false);
   const hudRefs = useRef({});
-  const lastFrameRef = useRef({ index: -1, phase: '', outOfBand: false });
+  const lastFrameRef = useRef({ index: -1, phase: '', outOfBand: false, action: null, playing: null });
   const scrubReadoutRef = useRef(null);
-  const readoutBandRef = useRef(null);
   const action = ACTION_BY_ID[actionId];
   const roles = useMemo(() => ({ ...peakRoles(action), ...(action.roles || {}) }), [action]);
   const rolesRef = useRef(roles);
@@ -667,6 +667,14 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
       st.time = t;                       // legacy mirror for annotations/study mode
       st.frameIndex = frameIndex;
       const frameChanged = frameIndex !== lastFrameRef.current.index;
+      // Phase 1 gate (Masterplan §6): the HUD must publish *nothing* while the
+      // scene is idle. The scheduler alone is time-based, so a paused scene
+      // would rewrite ~90 nodes 15x/s with unchanged values; gate it on an
+      // actual change of the integer frame, the action, or the transport.
+      const playingNow = !!(tc && tc.playing);
+      const hudDirty = frameChanged
+        || st.actionId !== lastFrameRef.current.action
+        || playingNow !== lastFrameRef.current.playing;
       if (frameChanged) {
         lastFrameRef.current.index = frameIndex;
         hudSchedRef.current.invalidate(); // a seek/step must publish immediately
@@ -787,8 +795,10 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         }
         st.telemetry = { angles: poseAngles, phase: label, outOfBand: anyOutOfBand, filters: trackers };
       }
-      if (hudSchedRef.current.due(now)) {
+      if (hudDirty && hudSchedRef.current.due(now)) {
         hudSchedRef.current.mark(now);
+        lastFrameRef.current.action = st.actionId;
+        lastFrameRef.current.playing = playingNow;
         const hud = hudRefs.current;
         const perf = window.__kinePerf;
         let writes = 0; // DOM writes this publication, for the M1 15 Hz audit
@@ -821,8 +831,16 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         }
         if (hud.phaseFeed) hud.phaseFeed.textContent = phaseLabel;
         // Legend meters: 54 bars, compositor-only transform, 15 Hz (audit A4).
+        // Write only when the bar actually moves (>= 1.5% of full scale): an
+        // inactive muscle costs zero writes instead of one per publication.
         for (const [muscle, el] of Object.entries(meterRefs.current)) {
-          if (el) el.style.transform = `scaleX(${Math.min(1, Math.max(0, levels[muscle] || 0))})`;
+          if (!el) continue;
+          const v = Math.min(1, Math.max(0, levels[muscle] || 0));
+          const prev = meterValueRef.current[muscle];
+          if (prev !== undefined && Math.abs(prev - v) < 0.015) continue;
+          meterValueRef.current[muscle] = v;
+          el.style.transform = `scaleX(${v})`;
+          writes += 1;
         }
         if (hud.timeLabel) { hud.timeLabel.textContent = `${tc.tSeconds.toFixed(2)} s / ${tc.duration.toFixed(2)} s`; writes += 1; }
         if (hud.frameLabel) { hud.frameLabel.textContent = `frame ${frameIndex + 1} / ${tc.frameCount}`; writes += 1; }

@@ -1,6 +1,6 @@
 # Atlas binary QC report
 
-Generated: 2026-09-29  
+Generated: 2026-10-03  
 Manifest: BodyParts3D 4.0  
 Scope: all 15 compressed geometry chunks and 2234 source parts
 
