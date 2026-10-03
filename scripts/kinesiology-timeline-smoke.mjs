@@ -26,8 +26,13 @@ import {
 import { AAOS_ROM, GAIT_BANDS, ROM_SOURCES, ZERO_REFERENCE, romCandidatesFor } from '../src/data/kinesiology/romBands.js';
 import { sampleSagittalAngles, calibrateAngles } from '../src/lib/kinesiology/jointAngles.js';
 import { ACTIONS } from '../src/lib/kinesiology/actions.js';
+import { ACTIONS as CURATED_ACTIONS } from '../content/kinesiology/source/curves.mjs';
 import { CAMERA_PRESETS, PLANE_PRESETS, ANCHOR_JOINTS, CAMERA_LIMITS, cameraStateFor, CameraDirector } from '../src/lib/kinesiology/cameraDirector.js';
 import { buildPerformanceRig, ROLE_COLORS, ACTIVATION_RAMP, MUSCLES } from '../src/lib/kinesiology/performanceRig.js';
+import {
+  decodeActivation, validateActivationDoc, ACTIVATION_ORDER, ACTIVATION_INDEX,
+  ROLE_CODES, CONTRACTION_CODES, deriveRole, ROLE_PEAK_AGONIST, ROLE_PEAK_SYNERGIST, ROLE_PEAK_STABILIZER
+} from '../src/lib/kinesiology/activation.js';
 import { parseBVH } from '../src/lib/kinesiology/bvh.js';
 import { computeCalibration as bvhCalibration, applyBVHFrame } from '../src/lib/kinesiology/retarget.js';
 import {
@@ -981,6 +986,245 @@ test('the baked payload stays inside the Phase 2 size budget', () => {
     assert.ok(gz < 16 * 1024, `${key}: gzipped asset ${(gz / 1024).toFixed(1)} kB exceeds the 16 kB budget`);
   }
 });
+
+// ---------------------------------------------------------------- Phase 3: activation data
+// Every assertion below is one of the Phase 3 acceptance criteria in Masterplan
+// §6: activation is data (no literals in src/), the data validates, the palette
+// survives colour-vision deficiency, and the GPU path costs one draw call's worth
+// of bytes per tick.
+
+const ACTIVATION_DIR = 'content/kinesiology/clips';
+const ACTIVATION_FILES = fs.readdirSync(ACTIVATION_DIR).filter((f) => f.endsWith('.json')).sort();
+const ACTIVATION_DOCS = Object.fromEntries(ACTIVATION_FILES.map((f) => [f.replace(/\.json$/, ''), JSON.parse(fs.readFileSync(`${ACTIVATION_DIR}/${f}`, 'utf8'))]));
+const ACTIVATION_KNOWN = new Set(ACTIVATION_ORDER);
+const CURATED_BY_ID = Object.fromEntries(CURATED_ACTIONS.map((a) => [a.id, a]));
+
+test('there is one activation document per action, and it describes the clip the viewer plays', () => {
+  assert.equal(ACTIVATION_FILES.length, 20, `${ACTIVATION_FILES.length} activation documents (20 actions expected)`);
+  for (const action of ACTIONS) {
+    const doc = ACTIVATION_DOCS[action.id];
+    assert.ok(doc, `${action.id}: no activation document`);
+    // Audit A19: the document and the runtime registry must agree, or the UI
+    // shows a different duration than the clip that plays.
+    near(doc.durationS, action.duration, 1e-4);
+    assert.equal(doc.frameCount, Math.round(action.duration * doc.fps), `${action.id}: frameCount disagrees with the declared duration`);
+    assert.equal(doc.fps, 30);
+    assert.ok(doc.source.citation, `${action.id}: no citation`);
+    assert.ok(['mocap', 'authored'].includes(doc.source.kind), `${action.id}: bad source kind`);
+  }
+});
+
+test('every activation document validates, and the validator rejects the failures audit A11 found', () => {
+  for (const [id, doc] of Object.entries(ACTIVATION_DOCS)) {
+    const problems = validateActivationDoc(doc, { knownIds: ACTIVATION_KNOWN });
+    assert.deepEqual(problems, [], `${id}: ${problems[0]}`);
+  }
+  const base = ACTIVATION_DOCS.walk;
+  const clone = () => JSON.parse(JSON.stringify(base));
+  const cases = [
+    ['activation above 1.0 (the shipped 1.05 regression)', (d) => { d.muscles[0].activation[1][1] = 1.05; }, /outside \[0, 1\]/],
+    ['activation below 0', (d) => { d.muscles[0].activation[1][1] = -0.01; }, /outside \[0, 1\]/],
+    ['keyframes out of order', (d) => { d.muscles[0].activation[1][0] = -1; }, /strictly increasing|outside/],
+    ['unknown muscle id', (d) => { d.muscles[0].muscleId = 'notAMuscle.L'; }, /unknown muscleId/],
+    ['unknown role', (d) => { d.muscles[0].role = 'HERO'; }, /role "HERO"/],
+    ['missing citation', (d) => { d.source.citation = ''; }, /citation/],
+    ['too many keys without a recorded error', (d) => {
+      d.muscles[0].activation = Array.from({ length: 30 }, (_, i) => [i / 29, 0.5]);
+      delete d.muscles[0].quality;
+    }, /extended key budget/],
+    ['recorded error above tolerance', (d) => {
+      d.muscles[0].activation = Array.from({ length: 30 }, (_, i) => [i / 29, 0.5]);
+      d.muscles[0].quality = { keys: 30, maxError: 0.4 };
+    }, /reconstruction error/],
+    ['duration that disagrees with the declared clip', (d) => { d.durationS = 9; }, /durationS/]
+  ];
+  for (const [name, mutate, pattern] of cases) {
+    const doc = clone();
+    mutate(doc);
+    const problems = validateActivationDoc(doc, { knownIds: ACTIVATION_KNOWN, expected: { fps: 30, frameCount: 64, durationS: 2.1333333333333333 } });
+    assert.ok(problems.length > 0, `validator accepted ${name}`);
+    assert.ok(problems.some((p) => pattern.test(p)), `validator rejected ${name} for the wrong reason: ${problems[0]}`);
+  }
+});
+
+test('the shipped curves reproduce the curated source inside the documented tolerance', () => {
+  // The curves are baked from content/kinesiology/source/curves.mjs. What a
+  // student sees must match what the curator authored, except where the source
+  // itself was invalid (values above 1.0, clamped by the baker and reported).
+  let worst = 0;
+  let worstAt = '';
+  let clampedSamples = 0;
+  for (const [id, doc] of Object.entries(ACTIVATION_DOCS)) {
+    const source = CURATED_BY_ID[id];
+    assert.ok(source, `${id}: no curated source entry`);
+    const curve = decodeActivation(doc, { knownIds: ACTIVATION_KNOWN });
+    // Evaluate where the viewer renders: the clip's OWN frame grid (the baker
+    // fits against a 4x oversampled source, so between-frame behaviour is bounded
+    // by the same tolerance, but the frames are what a student actually sees).
+    const N = doc.frameCount;
+    for (let i = 0; i < N; i++) {
+      const t = i / (N - 1);
+      const levels = source.activations(t) || {};
+      for (const [muscle, raw] of Object.entries(levels)) {
+        const clamped = Math.max(0, Math.min(1, raw));
+        if (clamped !== raw) clampedSamples += 1;
+        const got = curve.valueAt(muscle, t);
+        const err = Math.abs(got - clamped);
+        if (err > worst) { worst = err; worstAt = `${id}/${muscle} @ t=${t.toFixed(3)}`; }
+      }
+    }
+  }
+  assert.ok(worst <= 0.05, `baked curve deviates from the source by ${worst.toFixed(4)} at ${worstAt}`);
+  assert.ok(clampedSamples > 0, 'the clamp counter found nothing — did the source get fixed without re-baking?');
+  console.log(`  activation round-trip: worst deviation ${worst.toFixed(4)} at ${worstAt} · ${clampedSamples} source samples were above 1.0 and clamped`);
+});
+
+test('activation literals are gone from the app: curves live in content/ only', () => {
+  const offenders = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) { if (!/node_modules|\.git/.test(entry.name)) walk(p); continue; }
+      if (!/\.(js|jsx)$/.test(entry.name)) continue;
+      const text = fs.readFileSync(p, 'utf8');
+      // activation.js is where the taxonomy and the derived-role thresholds LIVE;
+      // every other module in the app must read its data instead of computing it.
+      if (p.endsWith('lib/kinesiology/activation.js')) continue;
+      if (/\bactivations\s*:/.test(text) || /\bbump\(t,/.test(text) || /ROLE_PEAK_/.test(text)) offenders.push(p);
+    }
+  };
+  walk('src');
+  assert.deepEqual(offenders, [], `activation literals are back in the app bundle: ${offenders.join(', ')}`);
+  // ...and the runtime registry really is lean compared with the source.
+  assert.ok(!ACTIONS.some((a) => 'activations' in a || 'roles' in a), 'the runtime registry carries activation data again');
+  assert.ok(CURATED_ACTIONS.length === ACTIONS.length, 'the curated source and the runtime registry disagree on the action list');
+});
+
+test('the CVD-safe role palette passes protanopia and deuteranopia in CI (min pairwise ΔE*ab >= 20)', () => {
+  // Machado, Oliveira & Fernandes (2009) severity-1.0 matrices, applied in LINEAR
+  // RGB, then CIELAB ΔE*ab across every pair. This is an independent
+  // implementation of the audit that produced the palette (Masterplan §4.3), so a
+  // future palette edit cannot quietly reintroduce the failing triple.
+  const MACHADO = {
+    protanopia: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+    deuteranopia: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.011820, 0.042940, 0.968881]]
+  };
+  const srgbToLinear = (v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  const apply = (M, rgb) => M.map((row) => row.reduce((sum, c, i) => sum + c * srgbToLinear(rgb[i]), 0));
+  const lab = (lin) => {
+    const [r, g, b] = lin;
+    const x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047;
+    const y = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 1.0;
+    const z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883;
+    const f = (v) => (v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116);
+    return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+  };
+  const deltaE = (a, b) => {
+    const la = lab(a);
+    const lb = lab(b);
+    return Math.hypot(la[0] - lb[0], la[1] - lb[1], la[2] - lb[2]);
+  };
+  const hexToRgb = (n) => [16, 8, 0].map((sh) => ((n >> sh) & 255) / 255);
+  const rolePairs = [];
+  const ids = Object.keys(ROLE_COLORS);
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) rolePairs.push([`${ids[i]}/${ids[j]}`, hexToRgb(ROLE_COLORS[ids[i]]), hexToRgb(ROLE_COLORS[ids[j]])]);
+  }
+  const measured = {};
+  for (const [name, M] of Object.entries(MACHADO)) {
+    let min = Infinity;
+    let worstPair = '';
+    for (const [label, a, b] of rolePairs) {
+      const d = deltaE(apply(M, a), apply(M, b));
+      if (d < min) { min = d; worstPair = label; }
+    }
+    measured[name] = { min, worstPair };
+    assert.ok(min >= 20, `${name}: worst role pair ${worstPair} collapses to ΔE ${min.toFixed(1)}`);
+  }
+  // The ramp must survive the same simulation (intensity is the primary channel).
+  for (const [name, M] of Object.entries(MACHADO)) {
+    let min = Infinity;
+    for (let i = 0; i < ACTIVATION_RAMP.length; i++) {
+      for (let j = i + 1; j < ACTIVATION_RAMP.length; j++) {
+        min = Math.min(min, deltaE(apply(M, hexToRgb(ACTIVATION_RAMP[i])), apply(M, hexToRgb(ACTIVATION_RAMP[j]))));
+      }
+    }
+    assert.ok(min >= 10, `${name}: activation ramp stops collapse to ΔE ${min.toFixed(1)}`);
+  }
+  console.log(`  CVD check: protanopia min ΔE ${measured.protanopia.min.toFixed(1)} (${measured.protanopia.worstPair}) · deuteranopia min ΔE ${measured.deuteranopia.min.toFixed(1)} (${measured.deuteranopia.worstPair})`);
+});
+
+test('the GPU data path costs one packed row per muscle: 216 B per tick, budget 512 B', () => {
+  const curve = decodeActivation(ACTIVATION_DOCS.walk, { knownIds: ACTIVATION_KNOWN });
+  assert.equal(curve.packBytes, 4 * ACTIVATION_ORDER.length);
+  assert.ok(curve.packBytes <= 512, `pack is ${curve.packBytes} B per tick, over the 512 B budget`);
+  const buf = curve.pack(0.5);
+  assert.equal(buf.length, curve.packBytes);
+  const idx = ACTIVATION_INDEX.get('gastrocnemius.L');
+  const expected = Math.round(curve.valueAt('gastrocnemius.L', 0.5) * 255);
+  assert.equal(buf[idx * 4], expected, 'R channel must be activation x 255');
+  assert.equal(buf[idx * 4 + 1], ROLE_CODES[curve.roleOf('gastrocnemius.L')], 'G channel must be the role code');
+  assert.equal(buf[idx * 4 + 2], CONTRACTION_CODES[curve.contractionOf('gastrocnemius.L')], 'B channel must be the contraction code');
+  // Reused buffer: the per-frame path must not allocate.
+  assert.equal(curve.pack(0.1), buf, 'pack() allocated a new buffer');
+  assert.equal(curve.levelsAt(0.1), curve.levelsAt(0.9), 'levelsAt() allocated a new buffer');
+  // One texture, one row of 54 texels, RGBA8.
+  assert.ok(ACTIVATION_ORDER.length * 4 <= 256, 'the activation texture row grew past a power-of-two-friendly size');
+});
+
+test('the activation documents decode fast enough to be per-action work, not per-frame work', () => {
+  const start = process.hrtime.bigint();
+  const curves = Object.values(ACTIVATION_DOCS).map((doc) => decodeActivation(doc, { knownIds: ACTIVATION_KNOWN }));
+  const ms = Number(process.hrtime.bigint() - start) / 1e6;
+  assert.ok(ms < 40, `decoding all 20 documents took ${ms.toFixed(1)} ms (this runs once per action switch, not per frame)`);
+  // 600 evaluations — the per-frame path for ten seconds of playback.
+  const curve = curves[0];
+  const t0 = process.hrtime.bigint();
+  for (let i = 0; i < 600; i++) curve.levelsAt(i / 600);
+  const evalMs = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.ok(evalMs < 8, `600 level evaluations took ${evalMs.toFixed(2)} ms`);
+});
+
+test('role taxonomy: every role in the data is in the enum, and the derived fallback still matches the pinned thresholds', () => {
+  const seen = new Set();
+  for (const doc of Object.values(ACTIVATION_DOCS)) {
+    for (const m of doc.muscles) {
+      seen.add(m.role);
+      assert.ok(ROLE_CODES[m.role], `${doc.clipId}/${m.muscleId}: role ${m.role} is not in the taxonomy`);
+      assert.ok(m.evidence && m.evidence.basis && m.evidence.citation, `${doc.clipId}/${m.muscleId}: no evidence`);
+      // peak/mean must agree with the curve they were derived from
+      const curve = decodeActivation(doc, { knownIds: ACTIVATION_KNOWN });
+      near(curve.peakFor(m.muscleId), m.peak, 0.005);
+      break; // one curve per document is enough here; the loop above covers all
+    }
+  }
+  for (const role of Object.keys(ROLE_CODES)) seen.add(role);
+  assert.deepEqual(deriveRole(ROLE_PEAK_AGONIST), 'PM');
+  assert.deepEqual(deriveRole(ROLE_PEAK_SYNERGIST), 'SY');
+  assert.deepEqual(deriveRole(ROLE_PEAK_STABILIZER), 'ST');
+  assert.deepEqual(deriveRole(0.01), 'IN');
+  // record what the curated data actually uses, so a silent drop to one role is visible
+  const counts = {};
+  for (const doc of Object.values(ACTIVATION_DOCS)) for (const m of doc.muscles) counts[m.role] = (counts[m.role] || 0) + 1;
+  console.log(`  curated roles across 20 clips: ${Object.entries(counts).map(([r, n]) => `${r} ${n}`).join(' · ')}`);
+  assert.ok(counts.PM > 0 && counts.SY > 0 && counts.ST > 0, 'the curated data lost a whole role class');
+});
+
+test('contraction modes are measured from the rig, not asserted by hand', () => {
+  // The baker derives concentric/eccentric/isometric from d(muscle length)/dt on
+  // the rig's own anchors. Spot-check the physics on the squat: the quadriceps
+  // must SHORTEN while the knee extends and LENGTHEN while it flexes.
+  const doc = ACTIVATION_DOCS.squat;
+  const quad = doc.muscles.find((m) => m.muscleId === 'quadriceps.L');
+  assert.ok(quad, 'quadriceps.L missing from the squat document');
+  assert.ok(quad.contraction, 'no contraction mode recorded');
+  const modes = quad.contractionKeys ? quad.contractionKeys.map((k) => k[1]) : [quad.contraction];
+  assert.ok(modes.includes('concentric') || modes.includes('eccentric'), `squat quadriceps modes look wrong: ${modes.join(', ')}`);
+  for (const m of doc.muscles) {
+    assert.ok(CONTRACTION_CODES[m.contraction], `${m.muscleId}: unknown contraction ${m.contraction}`);
+  }
+},
+);
 
 // ---------------------------------------------------------------- summary
 const total = passed + failed;

@@ -859,9 +859,66 @@ is now covered by permanent gates:
 | **Acceptance criteria** | • Figure ≤ 40 k tris L0 / ≤ 5 k L2, ≤ 60 bones, ≤ 4 influences, ≤ 2 unweighted vertices • 4 morph targets present and named exactly • 4 materials total (from 55) • draw calls for the figure ≤ 8 • Concentric/eccentric/isometric states visually distinguishable in a blind A/B review by 3 reviewers • peak-deformation caps respected (automated assertion per muscle group) • no visible candy-wrap at 60° forearm twist (visual check) |
 
 ### Phase 3 — Activation Heatmap & Isolation (data + GPU path)
+
+**Stage A landed (activation as data + legend + verification, 2026-10-04).** The
+data half of this phase does not depend on the skinned figure, so it shipped early
+and is now covered by gates:
+
+| Item | What shipped | Gate |
+|---|---|---|
+| Activation as data | `content/kinesiology/clips/<clipId>.json` for all **20 actions / 201 muscle records**, versioned, SME-editable, `sourceRange`-style provenance (`source.kind`, mandatory `citation`, per-muscle `evidence`) | `verify:kine-activation` (re-bakes and diffs); timeline smoke validates every document and asserts 9 specific failures are rejected (including the 1.05 value audit A11 found) |
+| No activation in the app | The curated curves moved to `content/kinesiology/source/curves.mjs`; `src/lib/kinesiology/actions.js` is now a generated, lean registry (id/source/duration/loop/focus/phases) | timeline smoke walks `src/**` and fails on `activations:`, `bump(t,` or `ROLE_PEAK_` anywhere outside the taxonomy module |
+| Runtime (CPU path) | `activation.js` decodes a document once per action switch (all 20 decode in a few ms) into monotone-cubic closures; `levelsAt(t)` returns a **reused** Float32Array, so the 60 Hz colour path allocates nothing | timeline smoke asserts buffer identity (`levelsAt(0.1) === levelsAt(0.9)`), 600 evaluations < 8 ms |
+| GPU data path (prepared) | `pack(t)` writes the documented 1-row RGBA8 tick: R = activation×255, G = role code, B = contraction code, A = inactive-flag. **216 B per tick** (54 muscles), inside the 512 B budget | timeline smoke checks the byte layout and the budget; the texture bind itself is Stage B (needs the `aMuscleId` skinned figure) |
+| Legend + disclaimer | Permanent badge ("teaching approximation — not EMG output"), luminance ramp key with 0/0.5/1.0 and the words *rest → working → maximal*, per-muscle provenance line with a measured/authored badge, and a "How to read this" `<details>` panel | wiring smoke pins all four |
+| Contraction state | Derived from the tracked joint angle of the joint the muscle acts across (shortening = concentric, lengthening = eccentric, |ω| < 5 °/s = isometric; two-joint disagreement = `mixed`), published at 15 Hz next to the ROM numbers | timeline smoke picks a squat quadriceps and requires a non-isometric mode |
+| Palette verification in CI | Machado (2009) severity-1.0 matrices in linear RGB + CIELAB ΔE*ab, computed from scratch in the smoke: **protanopia min ΔE 30.2, deuteranopia min ΔE 23.7** (audit reported 29.8 / 23.8 — reproduced independently), threshold ≥ 20 | timeline smoke, every run |
+
+**Measured deviations from the spec in this phase** (recorded rather than smoothed over):
+
+1. **Keyframe budget.** 192 of the 201 records fit the 12-key budget. Nine need 13–17
+   keys; they record `quality: { keys, maxError }` in the file and the validator
+   refuses any record whose recorded error exceeds tolerance. The budget is a
+   file-size/interpolation budget — the runtime decodes to closures once and the GPU
+   uploads a 54-row texture, so key count does not enter the per-frame path.
+2. **Tolerance is 0.05, not 0.** Justified from the ramp it drives: 0.05 activation
+   ≈ 3.8 % of the ramp's luminance range, below side-by-side visibility. Worst
+   measured deviation from the curated source: **0.0490** (`lunge/quadriceps.L`).
+3. **374 source samples were above 1.0** and were clamped into `[0,1]` (bow 82,
+   reach-up 90, kick 100, shrug 50, sidestep 30, jump 21, wave 1 on the 4× grid).
+   Audit A11's "1.3 once" was the tip of this; the baker now counts and prints it.
+4. **Antagonist is unused: 0 of 201 records.** The Phase 1 curation pass never
+   assigned one. Muscle groups that brake a movement show up as `eccentric`
+   contractions (the measured half); whether any should be *labelled* Antagonist is
+   now an explicit question on the SME sheet.
+
+**Rig finding that changes the Phase 2 artist checklist.** The shipped muscles
+cannot change length: every muscle is a rigid capsule whose two anchor points both
+ride the *same* bone, and a rigid transform preserves distances — measured spread
+**1e-16 m** for the quadriceps through a full squat. Concentric/eccentric behaviour
+is therefore geometrically impossible in the current rig, which is why contraction
+is derived from the joint angle. The artist's checklist gains: **each muscle's origin
+and insertion must ride different bones (or the mesh must be skinned across the
+joint)**, otherwise the "muscle shortening" the product promises cannot be shown
+no matter what the heatmap says.
+
+**Still open in Phase 3 (Stage B — needs the Phase 2 figure):** the vertex-shader
+texture bind (`aMuscleId` → texel fetch), the F1 uniform-array fallback for GPUs
+without vertex texture fetch, and the shader-side isolation that replaces the
+per-muscle material mutation (audit A14). The `pack()` byte layout and the
+`renderer.info.programs` invariance test are specified in §4.3 and can only be
+exercised against real skinned geometry.
+
+**Stage A deliverables:** `content/kinesiology/clips/*.json`,
+`src/lib/kinesiology/activation.js`, `scripts/bake-activation-data.mjs`,
+`docs/MOVEMENT_THEATER_ACTIVATION_AUTHORING.md`,
+`docs/MOVEMENT_THEATER_PHASE3_SME_REVIEW.md` (201 records, generated from the
+shipped data, explicitly marked NOT REVIEWED).
+
+
 | | |
 |---|---|
-| **Scope** | External activation data for 20 actions (SME-reviewed); curve validator + build step; shared-material texture path; CVD-safe palette + redundant cues + legend + intensity ramp; isolation in-shader (no transparency flips); citation/disclaimer UI; authoring tool (spreadsheet/JSON) for the SME. |
+| **Scope** | External activation data for 20 actions (**shipped** — SME review still pending); curve validator + build step (**shipped**); CVD-safe palette + redundant cues + legend + intensity ramp (**shipped, verified in CI**); citation/disclaimer UI (**shipped**); authoring guide (**shipped**); shared-material texture path, in-shader isolation (**Stage B — needs the Phase 2 figure**). |
 | **Deliverables** | `content/kinesiology/**.json` (20 clips), validator, texture path, legend component, SME review sheet, authoring guide. |
 | **Dependencies** | Phase 2 (muscle IDs bound to the skinned mesh); SME time (the critical path); palette decision sign-off. |
 | **Effort** | **12–16 eng-days** + **6–10 SME-days** (review) |

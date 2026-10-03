@@ -6,6 +6,7 @@ import { rigNameFor, computeCalibration, finalizeGround, applyBVHFrame, computeS
 import { buildPerformanceRig, MUSCLES } from '../src/lib/kinesiology/performanceRig.js';
 import { MUSCLE_FACTS } from '../src/data/kinesiology/muscleFacts.js';
 import { ACTIONS } from '../src/lib/kinesiology/actions.js';
+import { decodeActivation, ACTIVATION_ORDER, ROLE_CODES } from '../src/lib/kinesiology/activation.js';
 import { AUTHORED_ACTIONS, applyAuthoredPose } from '../src/lib/kinesiology/authoredTracks.js';
 
 const rig = buildPerformanceRig(THREE);
@@ -96,10 +97,26 @@ for (const id of ['gluteusMedius', 'rectusFemoris', 'lateralPterygoid', 'pronato
 }
 const baseIds = new Set(MUSCLES.map((m) => m.id));
 for (const id of baseIds) assert(MUSCLE_FACTS[id], `muscleFacts missing ${id}`);
-for (const action of ACTIONS) {
-  const levels = action.activations(0.5);
-  for (const key of Object.keys(levels)) {
-    if ((levels[key] || 0) > 0.45) assert(action.roles?.[key], `${action.id}: curated role missing for active muscle ${key}`);
+// Phase 3: activation and roles are DATA now (content/kinesiology/clips/*.json),
+// not callbacks in actions.js. This check reads the shipped documents and asserts
+// every strongly-activated muscle carries an explicit role — the property the
+// old "curated roles verified" line was protecting.
+{
+  const dir = 'content/kinesiology/clips';
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
+  assert(files.length === ACTIONS.length, `${files.length} activation documents for ${ACTIONS.length} actions`);
+  for (const file of files) {
+    const doc = JSON.parse(fs.readFileSync(`${dir}/${file}`, 'utf8'));
+    const curve = decodeActivation(doc, { knownIds: new Set(ACTIVATION_ORDER) });
+    const levels = curve.levelsAt(0.5);
+    for (let i = 0; i < levels.length; i++) {
+      if (levels[i] <= 0.45) continue;
+      const key = ACTIVATION_ORDER[i];
+      const role = curve.roleOf(key);
+      assert(role, `${doc.clipId}: curated role missing for active muscle ${key}`);
+      assert(ROLE_CODES[role], `${doc.clipId}: role ${role} is not in the taxonomy`);
+    }
+    assert(doc.source.citation, `${doc.clipId}: no citation`);
   }
 }
 assert(rig.muscles['gluteusMedius.L'] && rig.muscles['lateralPterygoid.R'] && rig.muscles['adductorPollicis.L'], 'sided midline muscle keys built');

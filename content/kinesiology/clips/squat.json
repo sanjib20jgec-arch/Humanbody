@@ -1,0 +1,533 @@
+{
+ "version": 1,
+ "clipId": "squat",
+ "label": "Squat",
+ "source": {
+  "kind": "authored",
+  "clip": null,
+  "citation": "HBL authored teaching track"
+ },
+ "fps": 30,
+ "frameCount": 90,
+ "durationS": 3,
+ "muscles": [
+  {
+   "muscleId": "erectorSpinae",
+   "role": "ST",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.5
+    ],
+    [
+     1,
+     0.5
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 2,
+    "maxError": 0
+   },
+   "peak": 0.5,
+   "meanActivation": 0.5,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "gluteusMaximus.L",
+   "role": "PM",
+   "contraction": "eccentric",
+   "contractionKeys": [
+    [
+     0.22472,
+     "isometric"
+    ],
+    [
+     1,
+     "eccentric"
+    ]
+   ],
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.06461,
+     0.1806
+    ],
+    [
+     0.19944,
+     0.765
+    ],
+    [
+     0.30337,
+     0.3623
+    ],
+    [
+     0.36517,
+     0.0558
+    ],
+    [
+     0.5618,
+     0.0058
+    ],
+    [
+     0.77528,
+     0.85
+    ],
+    [
+     0.92697,
+     0.2025
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 9,
+    "maxError": 0.0471
+   },
+   "peak": 0.85,
+   "meanActivation": 0.3433,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "gluteusMaximus.R",
+   "role": "PM",
+   "contraction": "eccentric",
+   "contractionKeys": [
+    [
+     0.22472,
+     "isometric"
+    ],
+    [
+     1,
+     "eccentric"
+    ]
+   ],
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.06461,
+     0.1806
+    ],
+    [
+     0.19944,
+     0.765
+    ],
+    [
+     0.30337,
+     0.3623
+    ],
+    [
+     0.36517,
+     0.0558
+    ],
+    [
+     0.5618,
+     0.0058
+    ],
+    [
+     0.77528,
+     0.85
+    ],
+    [
+     0.92697,
+     0.2025
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 9,
+    "maxError": 0.0471
+   },
+   "peak": 0.85,
+   "meanActivation": 0.3433,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "hamstrings.L",
+   "role": "SY",
+   "contraction": "mixed",
+   "contractionKeys": [
+    [
+     0.22472,
+     "isometric"
+    ],
+    [
+     1,
+     "mixed"
+    ]
+   ],
+   "activation": [
+    [
+     0,
+     0.3
+    ],
+    [
+     0.06461,
+     0.385
+    ],
+    [
+     0.19944,
+     0.66
+    ],
+    [
+     0.36517,
+     0.3263
+    ],
+    [
+     0.5618,
+     0.3027
+    ],
+    [
+     0.77528,
+     0.7
+    ],
+    [
+     0.92697,
+     0.3953
+    ],
+    [
+     1,
+     0.3
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 8,
+    "maxError": 0.034
+   },
+   "peak": 0.7,
+   "meanActivation": 0.4615,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "hamstrings.R",
+   "role": "SY",
+   "contraction": "mixed",
+   "contractionKeys": [
+    [
+     0.22472,
+     "isometric"
+    ],
+    [
+     1,
+     "mixed"
+    ]
+   ],
+   "activation": [
+    [
+     0,
+     0.3
+    ],
+    [
+     0.06461,
+     0.385
+    ],
+    [
+     0.19944,
+     0.66
+    ],
+    [
+     0.36517,
+     0.3263
+    ],
+    [
+     0.5618,
+     0.3027
+    ],
+    [
+     0.77528,
+     0.7
+    ],
+    [
+     0.92697,
+     0.3953
+    ],
+    [
+     1,
+     0.3
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 8,
+    "maxError": 0.034
+   },
+   "peak": 0.7,
+   "meanActivation": 0.4615,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "quadriceps.L",
+   "role": "PM",
+   "contraction": "eccentric",
+   "contractionKeys": [
+    [
+     0.22472,
+     "isometric"
+    ],
+    [
+     1,
+     "eccentric"
+    ]
+   ],
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.06461,
+     0.2125
+    ],
+    [
+     0.19944,
+     0.9
+    ],
+    [
+     0.30337,
+     0.4262
+    ],
+    [
+     0.36517,
+     0.0657
+    ],
+    [
+     0.5618,
+     0.0068
+    ],
+    [
+     0.77528,
+     1
+    ],
+    [
+     0.87079,
+     0.6156
+    ],
+    [
+     0.92697,
+     0.2382
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 10,
+    "maxError": 0.0491
+   },
+   "peak": 1,
+   "meanActivation": 0.4039,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "quadriceps.R",
+   "role": "PM",
+   "contraction": "eccentric",
+   "contractionKeys": [
+    [
+     0.22472,
+     "isometric"
+    ],
+    [
+     1,
+     "eccentric"
+    ]
+   ],
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.06461,
+     0.2125
+    ],
+    [
+     0.19944,
+     0.9
+    ],
+    [
+     0.30337,
+     0.4262
+    ],
+    [
+     0.36517,
+     0.0657
+    ],
+    [
+     0.5618,
+     0.0068
+    ],
+    [
+     0.77528,
+     1
+    ],
+    [
+     0.87079,
+     0.6156
+    ],
+    [
+     0.92697,
+     0.2382
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 10,
+    "maxError": 0.0491
+   },
+   "peak": 1,
+   "meanActivation": 0.4039,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "rectusAbdominis",
+   "role": "ST",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.3
+    ],
+    [
+     1,
+     0.3
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 2,
+    "maxError": 0
+   },
+   "peak": 0.3,
+   "meanActivation": 0.3,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "soleus.L",
+   "role": "ST",
+   "contraction": "eccentric",
+   "contractionKeys": [
+    [
+     0.2809,
+     "isometric"
+    ],
+    [
+     1,
+     "eccentric"
+    ]
+   ],
+   "activation": [
+    [
+     0,
+     0.3
+    ],
+    [
+     1,
+     0.3
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 2,
+    "maxError": 0
+   },
+   "peak": 0.3,
+   "meanActivation": 0.3,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "soleus.R",
+   "role": "ST",
+   "contraction": "eccentric",
+   "contractionKeys": [
+    [
+     0.2809,
+     "isometric"
+    ],
+    [
+     1,
+     "eccentric"
+    ]
+   ],
+   "activation": [
+    [
+     0,
+     0.3
+    ],
+    [
+     1,
+     0.3
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 2,
+    "maxError": 0
+   },
+   "peak": 0.3,
+   "meanActivation": 0.3,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  }
+ ]
+}

@@ -1,0 +1,150 @@
+{
+ "version": 1,
+ "clipId": "head-signals",
+ "label": "Head signals",
+ "source": {
+  "kind": "authored",
+  "clip": null,
+  "citation": "HBL authored teaching track"
+ },
+ "fps": 30,
+ "frameCount": 120,
+ "durationS": 4,
+ "muscles": [
+  {
+   "muscleId": "erectorSpinae",
+   "role": "ST",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.3
+    ],
+    [
+     1,
+     0.3
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 2,
+    "maxError": 0
+   },
+   "peak": 0.3,
+   "meanActivation": 0.3,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "masseter.L",
+   "role": "IN",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.05
+    ],
+    [
+     1,
+     0.05
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 2,
+    "maxError": 0
+   },
+   "peak": 0.05,
+   "meanActivation": 0.05,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "masseter.R",
+   "role": "IN",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.05
+    ],
+    [
+     1,
+     0.05
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 2,
+    "maxError": 0
+   },
+   "peak": 0.05,
+   "meanActivation": 0.05,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "upperTrapezius.L",
+   "role": "ST",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.25
+    ],
+    [
+     1,
+     0.25
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 2,
+    "maxError": 0
+   },
+   "peak": 0.25,
+   "meanActivation": 0.25,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "upperTrapezius.R",
+   "role": "ST",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.25
+    ],
+    [
+     1,
+     0.25
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 2,
+    "maxError": 0
+   },
+   "peak": 0.25,
+   "meanActivation": 0.25,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  }
+ ]
+}

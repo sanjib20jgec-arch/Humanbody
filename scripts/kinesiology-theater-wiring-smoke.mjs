@@ -75,6 +75,22 @@ must(/onStep=\{\(\) => apiRef\.current\?\.step\(0\.2\)\}/.test(lab), 'The extern
 must(/timeSeconds|tSeconds/.test(timeline), 'TimeController lost its derived time getters');
 must(/assertDuration/.test(timeline), 'TimeController no longer exposes the declared-duration check (audit A19)');
 
+// ---- Phase 3: activation is data, and the disclaimer contract holds ---------
+// Three levels, all required by the masterplan §4.3: a permanent badge, a
+// per-muscle provenance line, and a "how to read this" panel. A future refactor
+// that drops one of them changes what the app claims, so it fails here.
+must(/Activation is a teaching approximation/.test(theater), 'the persistent activation disclaimer is gone (level 1)');
+must(/kine-ramp/.test(theater) && /rest → working → maximal/.test(theater), 'the activation intensity ramp key is gone');
+must(/How to read this/.test(theater) && /kine-howto/.test(theater), 'the "How to read this" panel is gone (level 3)');
+must(/kine-evidence/.test(theater) && /BASIS_LABEL/.test(theater), 'per-muscle provenance is gone (level 2)');
+must(/hudRefs\.current\.contraction/.test(theater) && /contractionAt\(/.test(theater), 'the contraction-now indicator is gone');
+must(/decodeActivation\(/.test(theater) && !/action\.activations/.test(theater) && !/peakRoles/.test(theater),
+  'the theater is computing activation again instead of reading the data');
+must(/content\/kinesiology\/clips\/\*\.json/.test(theater), 'the theater no longer loads the activation documents');
+// The legend and the meters must never be driven by a per-frame allocation.
+must(/activation\.sample\(N\)/.test(theater), 'the activation sparkline no longer samples the decoded curve');
+must(/const levels = curve \? curve\.levelsAt\(tn\)/.test(theater), 'the per-frame activation read changed shape — check it is still allocation-free');
+
 // ---- the shipped angle reference -------------------------------------------
 // Segment angles (0 deg = the two segments are aligned), not clip-frame-0.
 // Measured 2026-10-04: the clip-relative reference showed a -69 deg knee on the

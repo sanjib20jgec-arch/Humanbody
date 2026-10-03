@@ -15,6 +15,17 @@ import { ACTIONS, ACTION_BY_ID, COACH_CUES } from '../lib/kinesiology/actions.js
 import { MUSCLE_FACTS, factFor, sideLabel } from '../data/kinesiology/muscleFacts.js';
 import { CAMERA_PRESETS, PLANE_PRESETS, ANCHOR_JOINTS, cameraStateFor, framingForAction, CameraDirector } from '../lib/kinesiology/cameraDirector.js';
 import { NORM_BANDS, curvePath, bandPolygon } from '../lib/kinesiology/jointAngles.js';
+// Phase 3 (pillar 3): activation is DATA. Every curve, role and citation comes
+// from content/kinesiology/clips/<clipId>.json, validated at bake time — there is
+// no activation literal left in src/ (asserted by verify:kine-activation).
+import { decodeActivation, ACTIVATION_ORDER, ACTIVATION_INDEX } from '../lib/kinesiology/activation.js';
+
+const ACTIVATION_ID_SET = new Set(ACTIVATION_ORDER);
+
+const ACTIVATION_DOCS = Object.fromEntries(
+  Object.entries(import.meta.glob('../../content/kinesiology/clips/*.json', { eager: true, import: 'default' }))
+    .map(([file, doc]) => [file.replace(/^.*\//, '').replace(/\.json$/, ''), doc])
+);
 // Movement Theater Phase 1 (Masterplan §2): time ownership, clip grid, telemetry.
 import { TimeController, LOOP_ONCE, LOOP_LOOP, LOOP_PINGPONG, SPEEDS as TIME_SPEEDS } from '../lib/kinesiology/TimeController.js';
 import { buildClipManifest, withContacts, collectManifestWarnings, AUTHORED_FPS } from '../lib/kinesiology/clipManifest.js';
@@ -76,27 +87,22 @@ const READOUT_LABELS = { hip: 'Hip', knee: 'Knee', ankle: 'Ankle' };
 const ANGLE_REFERENCE = 'segment';
 const ANGLE_OFFSET = { hip: 0, knee: 0, ankle: 0 };
 
-const ROLE_PEAK_AGONIST = 0.7;
-const ROLE_PEAK_SYNERGIST = 0.38;
-const ROLE_PEAK_STABILIZER = 0.15;
-
-function peakRoles(action) {
-  const peaks = {};
-  for (let i = 0; i <= 48; i++) {
-    const levels = action.activations(i / 48);
-    for (const [key, level] of Object.entries(levels)) peaks[key] = Math.max(peaks[key] || 0, level);
-  }
-  const roles = {};
-  for (const [key, peak] of Object.entries(peaks)) {
-    roles[key] = peak >= ROLE_PEAK_AGONIST ? 'PM'
-      : peak >= ROLE_PEAK_SYNERGIST ? 'SY'
-        : peak >= ROLE_PEAK_STABILIZER ? 'ST' : 'IN';
-  }
-  return roles;
-}
+/** Fallback for a muscle the activation document does not mention (never
+ *  activates in this action) — the taxonomy's inactive class, not a blank. */
+const INACTIVE_LEVELS = new Float32Array(ACTIVATION_ORDER.length);
 
 /** Display names for all five roles (actions.js only names the original three). */
 const ROLE_NAMES = { PM: 'Agonist', SY: 'Synergist', AN: 'Antagonist', ST: 'Stabilizer', IN: 'Inactive' };
+/** Plain-language contraction wording (pillar 3: state, not jargon). */
+const CONTRACTION_WORDS = {
+  concentric: 'shortening (driving the joint)',
+  eccentric: 'lengthening (braking the joint)',
+  isometric: 'holding (no length change)',
+  mixed: 'mixed (alternating)',
+  inactive: 'not active in this clip'
+};
+/** Evidence-basis badge text: measured vs authored (the disclaimer contract §4.3). */
+const BASIS_LABEL = { EMG: 'measured timing', 'kinesiology-text': 'textbook', 'authored-teaching': 'authored teaching' };
 const ROLE_ORDER = ['PM', 'SY', 'AN', 'ST', 'IN'];
 
 export default function KinesiologyTheater({ activeView, reducedMotion, playing, setPlaying, speed, setSpeed, apiRef }) {
@@ -265,9 +271,26 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   const lastFrameRef = useRef({ index: -1, phase: '', outOfBand: false, action: null, playing: null });
   const scrubReadoutRef = useRef(null);
   const action = ACTION_BY_ID[actionId];
-  const roles = useMemo(() => ({ ...peakRoles(action), ...(action.roles || {}) }), [action]);
+  // One decode per action switch (sub-millisecond): the document is plain JSON.
+  const activation = useMemo(
+    () => (ACTIVATION_DOCS[actionId] ? decodeActivation(ACTIVATION_DOCS[actionId], { knownIds: ACTIVATION_ID_SET }) : null),
+    [actionId]
+  );
+  const activationRef = useRef(activation);
+  activationRef.current = activation;
+  const roles = useMemo(() => {
+    const out = {};
+    for (const id of ACTIVATION_ORDER) out[id] = activation ? activation.roleFor(id) : 'IN';
+    return out;
+  }, [activation]);
+  //: Contraction mode changes far slower than the playhead; this drives the
+  //: "working now" line in the facts card, re-computed only when the joint does.
+  const [contractionNow, setContractionNow] = useState(null);
   const rolesRef = useRef(roles);
   rolesRef.current = roles;
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
+  const contractionRef = useRef(null);
   const playRef = useRef(playing && !reducedMotion);
   playRef.current = playing && !reducedMotion;
   const speedRef = useRef(speed);
@@ -714,8 +737,10 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         for (const ph of act.phases.slice(0, -1)) {
           if (lastTnRef.current < ph.until && tn >= ph.until) {
             setPlaying(false);
-            const lv = act.activations(Math.min(1, ph.until + 0.02));
-            const top = Object.entries(lv).sort((a, b) => b[1] - a[1])[0]?.[0];
+            const lv = activation ? activation.levelsAt(Math.min(1, ph.until + 0.02)) : INACTIVE_LEVELS;
+            let topIdx = 0;
+            for (let i = 1; i < lv.length; i++) if (lv[i] > lv[topIdx]) topIdx = i;
+            const top = lv[topIdx] > 0 ? ACTIVATION_ORDER[topIdx] : null;
             const fo = Object.keys(roles).filter((k) => k !== top).sort(() => Math.random() - 0.5).slice(0, 2);
             setStudyPause({ pct: Math.round(ph.until * 100), label: ph.rla || ph.name, predict: top ? [top, ...fo].sort(() => Math.random() - 0.5) : null, predictCorrect: top, predictFeedback: null });
             break;
@@ -795,8 +820,10 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
       }
 
       // Activation levels drive the muscle colour every frame (motion), while
-      // their numeric readouts are published on the 15 Hz HUD slot below.
-      const levels = act.activations(tn);
+      // their numeric readouts are published on the 15 Hz HUD slot below. The
+      // buffer is REUSED by the decoder — read it now, never store it.
+      const curve = activationRef.current;
+      const levels = curve ? curve.levelsAt(tn) : INACTIVE_LEVELS;
 
       // ---- Phase 1 (Pillar 4): telemetry is COMPUTED at 60 Hz but PUBLISHED at
       // 15 Hz. Discrete events (a phase change, an out-of-reference-range entry
@@ -859,12 +886,24 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
           if (hud.bandSource) hud.bandSource.textContent = trackers.knee?.band?.source || '';
         }
         if (hud.phaseFeed) hud.phaseFeed.textContent = phaseLabel;
+        // Phase 3: the selected muscle's contraction state, on the same 15 Hz
+        // publication as every other number (scene stays at 60 FPS). Written only
+        // when the mode actually changes — a held contraction costs zero writes.
+        if (hud.contraction && curve && selectedRef.current) {
+          const mode = curve.contractionAt(selectedRef.current, tn) || 'inactive';
+          if (contractionRef.current !== mode) {
+            contractionRef.current = mode;
+            hud.contraction.textContent = CONTRACTION_WORDS[mode] || mode;
+            writes += 1;
+          }
+        }
         // Legend meters: 54 bars, compositor-only transform, 15 Hz (audit A4).
         // Write only when the bar actually moves (>= 1.5% of full scale): an
         // inactive muscle costs zero writes instead of one per publication.
         for (const [muscle, el] of Object.entries(meterRefs.current)) {
           if (!el) continue;
-          const v = Math.min(1, Math.max(0, levels[muscle] || 0));
+          const idx = ACTIVATION_INDEX.get(muscle);
+          const v = Math.min(1, Math.max(0, idx === undefined ? 0 : levels[idx] || 0));
           const prev = meterValueRef.current[muscle];
           if (prev !== undefined && Math.abs(prev - v) < 0.015) continue;
           meterValueRef.current[muscle] = v;
@@ -898,7 +937,16 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
 
       // Phase 78: on low-power tiers the emissive glow updates at half rate.
       if (!low || (actFrame++ % 2 === 0)) {
-        if (st.showMuscles) for (const [muscle, level] of Object.entries(levels)) rig.setMuscleActivation(muscle, level, rolesRef.current[muscle] || 'ST');
+        if (st.showMuscles) {
+          // Indexed walk over the canonical 54-muscle order: the decoder wrote a
+          // Float32Array, so this costs no property lookups and no allocation.
+          for (let i = 0; i < levels.length; i++) {
+            const level = levels[i];
+            if (level <= 0.001) continue;
+            const muscle = ACTIVATION_ORDER[i];
+            rig.setMuscleActivation(muscle, level, rolesRef.current[muscle] || 'ST');
+          }
+        }
       }
 
       const phase = act.phases.find((p) => tn <= p.until) || act.phases[act.phases.length - 1];
@@ -1199,17 +1247,17 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   }, [selected]);
 
   // Phase 83 (B5): activation sparkline for the facts card.
+  const evidence = useMemo(() => (selected && activation ? activation.evidenceFor(selected) : null), [selected, activation]);
   const spark = useMemo(() => {
-    if (!selected) return null;
-    const act = ACTION_BY_ID[actionId];
+    if (!selected || !activation) return null;
     const N = 60;
+    const matrix = activation.sample(N);
+    const idx = ACTIVATION_INDEX.get(selected);
+    if (idx === undefined) return new Array(N).fill(0);
     const vals = [];
-    for (let i = 0; i < N; i++) {
-      const levels = act.activations(i / (N - 1));
-      vals.push(levels[selected] || 0);
-    }
+    for (let i = 0; i < N; i++) vals.push(matrix[i * ACTIVATION_ORDER.length + idx]);
     return vals;
-  }, [selected, actionId]);
+  }, [selected, actionId, activation]);
 
   // Phase 102 (W7) + Phase 1: outline the selected muscle. The rig owns ONE
   // shared outline object, so selection never adds 54 transparent draws (A14)
@@ -1535,6 +1583,20 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
           <ul className="kine-role-key" aria-label="Muscle role colours">
             {ROLE_ORDER.map((r) => <li key={r}><i className={`role-${r}`} aria-hidden="true" />{ROLE_NAMES[r]}</li>)}
           </ul>
+          {/* Phase 3 (Pillar 3) level 1: persistent, non-dismissible disclaimer. */}
+          <p className="kine-disclaimer" role="note">
+            <span aria-hidden="true">ⓘ</span>
+            <span><b>Activation is a teaching approximation — not EMG output.</b> Values are relative 0–1, timings are phase-resolved approximations.
+            {' '}<a href="#kine-howto">How to read this</a></span>
+          </p>
+          {/* Intensity is encoded by LUMINANCE, not hue, so it survives colour-vision
+              deficiency; the ramp is verified in CI against the protanopia/deuteranopia
+              matrices (min pairwise ΔE 23.9 / 19.5). */}
+          <div className="kine-ramp" aria-label="Activation intensity scale">
+            <div className="kine-ramp-bar" role="img" aria-label="Activation ramp from rest to maximal, dark to bright" />
+            <span className="kine-ramp-scale"><span>0</span><span>0.5</span><span>1.0</span></span>
+            <span className="kine-ramp-note">rest → working → maximal (teaching scale)</span>
+          </div>
           <ul className="kine-legend">
             {muscleList.map((muscle) => <li key={muscle}>
               <button type="button" className={`kine-legend-row ${selected === muscle ? 'active' : ''}`} aria-pressed={selected === muscle} onClick={() => setSelected(selected === muscle ? null : muscle)}>
@@ -1543,6 +1605,16 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
               </button>
             </li>)}
           </ul>
+          <details className="kine-howto" id="kine-howto">
+            <summary>How to read this</summary>
+            <ul>
+              <li><b>0–1 is relative activation</b>, a teaching scale — not millivolts, not EMG amplitude.</li>
+              <li><b>Roles are qualitative.</b> Agonist = prime mover, synergist = assists, antagonist = opposes (often braking), stabilizer = holds a remote segment still. A role can change during a movement, and a muscle can be an agonist in one joint action and a stabilizer in another.</li>
+              <li><b>Timings are phase-resolved approximations</b>, simplified from the cited source; each muscle names its own basis in its facts card.</li>
+              <li><b>Colour never carries a meaning alone:</b> roles also differ by rim shape in the legend, and intensity is encoded by brightness, which survives colour-vision deficiency.</li>
+              <li><b>Contraction wording:</b> shortening = concentric, lengthening = eccentric, holding = isometric — measured here from the figure's own segment lengths, so it describes the pose you are watching.</li>
+            </ul>
+          </details>
           {selected && factFor(selected) && <div className="kine-facts" role="note" aria-label={`Muscle facts: ${factFor(selected).name}`}>
             <div className="kine-facts-head"><strong>{factFor(selected).name + sideLabel(selected)}</strong><button type="button" onClick={() => setSelected(null)} aria-label="Clear muscle selection">×</button></div>
             <em>{factFor(selected).latin}</em>
@@ -1550,10 +1622,17 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
             <p><b>Origin:</b> {factFor(selected).origin}</p>
             <p><b>Insertion:</b> {factFor(selected).insertion}</p>
             <p><b>Action:</b> {factFor(selected).action}</p>
+            <p><b>Role:</b> {ROLE_NAMES[roles[selected]] || 'Inactive'} · <b>Working now:</b> <span className="kine-contraction" ref={(el) => { hudRefs.current.contraction = el; }}>—</span></p>
             {spark && <svg viewBox="0 0 150 30" className="kine-actline" role="img" aria-label="Activation timing of the selected muscle across this action">
               <path d={curvePath(spark, 150, 30, 0, 1.2)} className="kine-curve" />
             </svg>}
             {spark && <small className="kine-actline-note">Activation timing in this teaching track — windows follow published EMG timing, simplified.</small>}
+            {/* Phase 3 (Pillar 3) level 2: per-muscle provenance, straight from the
+                data record, so no number on screen is unsourced. */}
+            {evidence && <p className="kine-evidence">
+              <span className={`badge ${evidence.basis === 'EMG' ? 'measured' : 'authored'}`}>{BASIS_LABEL[evidence.basis] || evidence.basis}</span>
+              <b>Basis:</b> {evidence.citation}. {evidence.note}
+            </p>}
           </div>}
         </div>
       </aside>
