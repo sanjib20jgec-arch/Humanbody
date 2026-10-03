@@ -12,7 +12,7 @@ function Segmented({ name, label }) {
       aria-pressed={prefs[name] === value}
       lang={name === 'language' ? value : undefined}
       onClick={() => setPreference(name, value)}
-    >{name === 'language' ? (value === 'bn' ? 'বাংলা' : 'English') : name === 'textScale' ? `${value}%` : t(`settings.${name}.${value}`)}</button>)}
+    >{name === 'language' ? ({ en: 'English', bn: 'বাংলা', hi: 'हिन्दी' }[value] || value) : name === 'textScale' ? `${value}%` : t(`settings.${name}.${value}`)}</button>)}
   </div>;
 }
 

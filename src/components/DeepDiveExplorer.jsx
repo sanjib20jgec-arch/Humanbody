@@ -66,6 +66,7 @@ function DeepDive({ pack, builder, reducedMotion, s, eyebrow }) {
   const show3D = use3D && !sceneError;
 
   return <>
+    {lang === 'hi' && <p className="mito-note" role="note">{s('translationNotice')}</p>}
     <header className="mito-head">
       <div><span className="eyebrow">{eyebrow} · {s(`level.${prefs.level}`)}</span><h3 id="deep-title">{L(pack.title)}</h3><p>{L(pack.lead)}</p></div>
       <span className="mito-badge">{show3D ? s('badge3d') : s('badge2d')}</span>

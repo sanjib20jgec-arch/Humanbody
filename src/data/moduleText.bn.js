@@ -14,13 +14,29 @@ export const moduleTextBn = {
   kinesiology: { title: 'চলন থিয়েটার', short: 'চলন', eyebrow: 'সমন্বয় · গতিশীল দেহ', description: 'হাঁটা, দৌড়ানো, লাফানো ও কথা বলায় কোন পেশি কাজ করে তা যে-কোনো কোণ থেকে দেখুন।', topics: ['সক্রিয় পেশি', 'চলন', 'ক্যামেরার কোণ'], objectives: [] }
 };
 
+// Hindi module summaries are authored as a separate locale layer; deeper bay content is being localized incrementally.
+export const moduleTextHi = {
+  cell: { title: 'कोशिका की संरचना', short: 'कोशिका', eyebrow: 'आधार · जीवन की इकाई', description: 'कोशिकांगों को जानें और कोशिका झिल्ली से होकर होने वाले विसरण को देखें।', topics: ['कोशिकांग', 'कोशिका झिल्ली', 'विसरण'], objectives: ['मुख्य कोशिकांगों की पहचान करें और उनके कार्य बताएँ।', 'समझाएँ कि कोशिका झिल्ली पदार्थों की आवाजाही कैसे नियंत्रित करती है।', 'बताएँ कि सांद्रता का अंतर विसरण को कैसे चलाता है।'] },
+  tissues: { title: 'ऊतक', short: 'ऊतक', eyebrow: 'आधार · कोशिकाओं के समूह', description: 'चार प्रमुख जन्तु ऊतकों, पादप ऊतकों, जोड़ों और कंकाल को जानें।', topics: ['उपकला ऊतक', 'संयोजी ऊतक', 'पेशीय और तंत्रिका ऊतक'], objectives: ['चार प्रमुख जन्तु ऊतकों में अंतर करें।', 'ऊतक की संरचना और उसके कार्य का संबंध समझाएँ।', 'जोड़ों और पेशियों के सहयोग का वर्णन करें।'] },
+  digestion: { title: 'मानव पाचन', short: 'पाचन', eyebrow: 'तंत्र · पोषण', description: 'भोजन के मार्ग का अनुसरण करें और एंजाइमों की क्रिया देखें।', topics: ['आहार नाल', 'एंजाइम', 'अवशोषण'], objectives: ['आहार नाल के अंगों को क्रम में रखें।', 'समझाएँ कि एंजाइम भोजन को कैसे तोड़ते हैं।', 'छोटी आँत में अवशोषण का महत्व बताएँ।'] },
+  circulation: { title: 'रक्त परिसंचरण', short: 'परिसंचरण', eyebrow: 'तंत्र · परिवहन', description: 'हृदय की संरचना देखें और दाब के अंतर से रक्त प्रवाह का अनुसरण करें।', topics: ['हृदय', 'रक्त वाहिकाएँ', 'दोहरा परिसंचरण'], objectives: ['हृदय के कक्षों और कपाटों की पहचान करें।', 'दोहरा परिसंचरण का मार्ग खोजें।', 'समझाएँ कि दाब का अंतर रक्त को कैसे प्रवाहित करता है।'] },
+  nervous: { title: 'मस्तिष्क और तंत्रिकाएँ', short: 'तंत्रिका तंत्र', eyebrow: 'समन्वय · संकेत', description: 'प्रतिवर्ती चाप और तंत्रिका संकेतों के मार्ग का अनुसरण करें।', topics: ['न्यूरॉन', 'प्रतिवर्ती चाप', 'हार्मोन'], objectives: ['न्यूरॉन के भागों की पहचान करें।', 'प्रतिवर्ती चाप के चरण क्रम में रखें।', 'समझाएँ कि सचेत अनुभूति से पहले प्रतिवर्त क्यों शुरू हो सकता है।'] },
+  respiration: { title: 'श्वसन', short: 'श्वसन', eyebrow: 'तंत्र · गैसों का आदान-प्रदान', description: 'श्वास लेने, वायुमार्ग और वायुकोषों में गैसों के आदान-प्रदान को देखें।', topics: ['वायुमार्ग', 'वायुकोष', 'गैसों का आदान-प्रदान'], objectives: ['श्वसन मार्ग के अंगों को क्रम में रखें।', 'समझाएँ कि मध्यपट श्वास लेने में कैसे सहायता करता है।', 'वायुकोषों में गैसों के आदान-प्रदान का वर्णन करें।'] },
+  excretion: { title: 'उत्सर्जन', short: 'उत्सर्जन', eyebrow: 'तंत्र · संतुलन', description: 'नेफ्रॉन में निस्यंदन और जल के पुनःअवशोषण का अनुसरण करें।', topics: ['वृक्क', 'नेफ्रॉन', 'मूत्र निर्माण'], objectives: ['वृक्क और नेफ्रॉन के भाग पहचानें।', 'मूत्र निर्माण के चरण क्रम में रखें।', 'जल संतुलन में ADH की भूमिका समझाएँ।'] },
+  reproduction: { title: 'प्रजनन', short: 'प्रजनन', eyebrow: 'निरंतरता · नया जीवन', description: 'जनन कोशिकाओं, निषेचन और प्रारंभिक विकास के चरणों को क्रम में रखें।', topics: ['जनन कोशिकाएँ', 'निषेचन', 'मासिक चक्र'], objectives: ['जनन कोशिकाओं, निषेचन और शुरुआती कोशिका विभाजन की भूमिका पहचानें।', 'प्रजनन चक्र की मुख्य घटनाओं को क्रम में रखें।', 'समझाएँ कि निषेचन से द्विगुणित युग्मनज क्यों बनता है।'] },
+  heredity: { title: 'आनुवंशिकता', short: 'आनुवंशिकता', eyebrow: 'सूचना · लक्षण', description: 'पुनेट वर्ग बनाएँ और एलील के संयोजन का अनुमान लगाएँ।', topics: ['एलील', 'जीनप्ररूप', 'प्रायिकता'], objectives: ['जीन, एलील, जीनप्ररूप और लक्षणप्ररूप में अंतर करें।', 'एक सरल पुनेट वर्ग बनाएँ।', 'आनुवंशिकता को निश्चितता नहीं, अपेक्षित संभावना के रूप में समझाएँ।'] },
+  evolution: { title: 'जैव-विकास', short: 'विकास', eyebrow: 'परिवर्तन · जनसंख्या', description: 'पतंगों की जनसंख्या में प्राकृतिक चयन देखें और समजात अंगों, जीवाश्मों तथा मानव-विकास वृक्ष की तुलना करें।', topics: ['प्राकृतिक चयन', 'प्रमाण', 'मानव उत्पत्ति'], objectives: ['विविधता, वंशागति और असमान उत्तरजीविता से प्राकृतिक चयन समझाएँ।', 'समजात और समरूप अंगों में अंतर करें।', 'मानव विकास को साझा पूर्वजों वाला शाखित वृक्ष बताएँ।'] },
+  environment: { title: 'पर्यावरण', short: 'पर्यावरण', eyebrow: 'पारिस्थितिकी · ऊर्जा प्रवाह', description: 'खाद्य शृंखला में ऊर्जा प्रवाह का अनुसरण करें और सुंदरबन के मैंग्रोव तथा ओज़ोन परत को जानें।', topics: ['खाद्य शृंखला', '10% नियम', 'संरक्षण'], objectives: ['खाद्य शृंखला के जीवों को पोषण स्तरों में रखें।', 'ऊर्जा प्रवाह में 10 प्रतिशत नियम लागू करें।', 'मैंग्रोव के अनुकूलन और ओज़ोन परत की भूमिका समझाएँ।'] },
+  kinesiology: { title: 'गतिशीलता प्रयोगशाला', short: 'गतिशीलता', eyebrow: 'समन्वय · गतिशील शरीर', description: 'चलने, दौड़ने, कूदने और बोलने में सक्रिय पेशियों को अलग-अलग कोणों से देखें।', topics: ['सक्रिय पेशियाँ', 'गति', 'कैमरा कोण'], objectives: [] }
+};
+
 export function localizeModule(module, language) {
-  const bn = language === 'bn' ? moduleTextBn[module.id] : null;
-  if (!bn) return module;
-  return { ...module, title: bn.title, short: bn.short, eyebrow: bn.eyebrow, description: bn.description, topics: bn.topics };
+  const localized = language === 'bn' ? moduleTextBn[module.id] : language === 'hi' ? moduleTextHi[module.id] : null;
+  if (!localized) return module;
+  return { ...module, title: localized.title, short: localized.short, eyebrow: localized.eyebrow, description: localized.description, topics: localized.topics };
 }
 
 export function localizeObjectives(moduleId, objectives, language) {
-  const bn = language === 'bn' ? moduleTextBn[moduleId]?.objectives : null;
-  return bn && bn.length ? bn : objectives;
+  const localized = language === 'bn' ? moduleTextBn[moduleId]?.objectives : language === 'hi' ? moduleTextHi[moduleId]?.objectives : null;
+  return localized && localized.length ? localized : objectives;
 }

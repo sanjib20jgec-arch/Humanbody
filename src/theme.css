@@ -3,6 +3,24 @@
    (scripts/generate-light-theme.mjs) + the hand-tuned overrides below. */
 @import './theme-light.generated.css';
 
+/* Devanagari glyphs: Noto Sans Devanagari (SIL OFL 1.1), script subset only. */
+@font-face {
+  font-family: 'Noto Sans Devanagari';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../node_modules/@fontsource/noto-sans-devanagari/files/noto-sans-devanagari-devanagari-400-normal.woff2') format('woff2');
+  unicode-range: U+0900-097F, U+1CD0-1CFF, U+200C-200D, U+20B9, U+25CC, U+A8E0-A8FF;
+}
+@font-face {
+  font-family: 'Noto Sans Devanagari';
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+  src: url('../node_modules/@fontsource/noto-sans-devanagari/files/noto-sans-devanagari-devanagari-600-normal.woff2') format('woff2');
+  unicode-range: U+0900-097F, U+1CD0-1CFF, U+200C-200D, U+20B9, U+25CC, U+A8E0-A8FF;
+}
+
 /* Bengali glyphs: Noto Sans Bengali (SIL OFL 1.1), Bengali subset only.
    unicode-range means the file is downloaded only when Bengali text is shown. */
 @font-face {
@@ -23,13 +41,13 @@
 }
 
 :root {
-  --sans: 'Manrope', 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;
+  --sans: 'Manrope', 'Noto Sans Bengali', 'Noto Sans Devanagari', ui-sans-serif, system-ui, sans-serif;
   --user-text-scale: 1;
-  --mono: 'DM Mono', ui-monospace, 'Noto Sans Bengali', monospace;
+  --mono: 'DM Mono', ui-monospace, 'Noto Sans Bengali', 'Noto Sans Devanagari', monospace;
 }
 /* Bengali conjuncts and matras need more vertical room than Latin. */
-:root[lang="bn"] body { line-height: 1.65; }
-:root[lang="bn"] .eyebrow { letter-spacing: .02em; }
+:root[lang="bn"] body, :root[lang="hi"] body { line-height: 1.65; }
+:root[lang="bn"] .eyebrow, :root[lang="hi"] .eyebrow { letter-spacing: .02em; }
 
 /* User text-size slider (Settings) — scales rem/em-based and root text. */
 html { font-size: calc(100% * var(--user-text-scale)); }

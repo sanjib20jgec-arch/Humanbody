@@ -342,7 +342,7 @@
 :root[data-theme="light"] .body-3d-stage .body-glow-one { background: rgba(17,98,108,.12) }
 :root[data-theme="light"] .body-3d-stage .body-glow-two { background: rgba(92,60,163,.1) }
 :root[data-theme="light"] .three-hud { color: #4f667c }
-:root[data-theme="light"] .three-hud-bottom button { color: #3e5264; background: rgba(231,229,225,.86) }
+:root[data-theme="light"] .three-hud-bottom button { color: #2a3a46; background: rgba(231,229,225,.86) }
 :root[data-theme="light"] .three-hud-bottom button:hover { border-color: rgba(18,97,101,.55) }
 :root[data-theme="light"] .touch-hint { color: #4d667c }
 :root[data-theme="light"] .body-3d-stage .map-scale span:last-child { color: #4c667d }
@@ -462,6 +462,7 @@
 @media (max-width: 767px) {
 :root[data-theme="light"] .anatomy-layer-controller, :root[data-theme="light"] .anatomy-hud-card { box-shadow: 0 10px 24px rgba(252,250,246,.24) }
 }
+:root[data-theme="light"] .anatomy-search { border: 1px solid rgba(44,63,88,.18); background: rgba(241,239,235,.76); box-shadow: 0 12px 28px rgba(252,250,246,.22) }
 :root[data-theme="light"] .anatomy-search label { color: #4e667b }
 :root[data-theme="light"] .anatomy-search input { color: #121b1f; background: rgba(238,236,232,.88); border: 1px solid rgba(6,99,94,.24) }
 :root[data-theme="light"] .anatomy-search input::placeholder { color: #4b677d }
@@ -1037,3 +1038,8 @@
 :root[data-theme="light"] .kine-pace { color: #3d5165 }
 :root[data-theme="light"] .outline-button.danger { border-color: rgba(162,29,14,0.5); color: #932d21 }
 :root[data-theme="light"] .outline-button.danger.armed { background: rgba(162,29,14,0.16) }
+:root[data-theme="light"] .anatomy-search, :root[data-theme="light"] .anatomy-layer-controller, :root[data-theme="light"] .anatomy-hud-card, :root[data-theme="light"] .atlas-clip-controls, :root[data-theme="light"] .atlas-mode-disclosure, :root[data-theme="light"] #atlas-structure-index, :root[data-theme="light"] #atlas-bookmarks-panel { background-color: rgba(241,239,235,.9); border-color: rgba(44,63,88,.22) }
+@media (max-width: 767px) {
+:root[data-theme="light"] .body-3d-stage .anatomy-hud-card.mobile-open { background: rgba(244,242,238,.96); box-shadow: 0 16px 42px rgba(252,250,246,.38) }
+:root[data-theme="light"] .atlas-sheet-handle i { background: rgba(31,49,59,.62) }
+}
