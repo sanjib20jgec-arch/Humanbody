@@ -3,38 +3,125 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { buildPerformanceRig } from '../lib/kinesiology/performanceRig.js';
-import { parseBVH } from '../lib/kinesiology/bvh.js';
-import { computeCalibration, finalizeGround, applyBVHFrame, computeStanceData, applyFootPlant } from '../lib/kinesiology/retarget.js';
+import { applyFootPlant } from '../lib/kinesiology/retarget.js';
+import {
+  decodeClipTracksMap, applyTrackFrame, trackAngles,
+  groundOffsetForRig, stanceForRig, gaitStatsFromTracks
+} from '../lib/kinesiology/motionTracks.js';
+import walkTracks from '../data/kinesiology/clips/walk_cmu.json';
+import jumpTracks from '../data/kinesiology/clips/jump_cmu.json';
 import { AUTHORED_ACTIONS, applyAuthoredPose, CLINICAL_PATTERNS } from '../lib/kinesiology/authoredTracks.js';
-import { ACTIONS, ACTION_BY_ID, ROLE_LABELS, COACH_CUES } from '../lib/kinesiology/actions.js';
+import { ACTIONS, ACTION_BY_ID, COACH_CUES } from '../lib/kinesiology/actions.js';
 import { MUSCLE_FACTS, factFor, sideLabel } from '../data/kinesiology/muscleFacts.js';
-import { CAMERA_PRESETS, cameraStateFor, applyCamera } from '../lib/kinesiology/cameraDirector.js';
-import { sampleSagittalAngles, calibrateAngles, NORM_BANDS, curvePath, bandPolygon } from '../lib/kinesiology/jointAngles.js';
+import { CAMERA_PRESETS, PLANE_PRESETS, ANCHOR_JOINTS, cameraStateFor, framingForAction, CameraDirector } from '../lib/kinesiology/cameraDirector.js';
+import { NORM_BANDS, curvePath, bandPolygon } from '../lib/kinesiology/jointAngles.js';
+// Phase 3 (pillar 3): activation is DATA. Every curve, role and citation comes
+// from content/kinesiology/clips/<clipId>.json, validated at bake time — there is
+// no activation literal left in src/ (asserted by verify:kine-activation).
+import { decodeActivation, ACTIVATION_ORDER, ACTIVATION_INDEX } from '../lib/kinesiology/activation.js';
+
+const ACTIVATION_ID_SET = new Set(ACTIVATION_ORDER);
+
+const ACTIVATION_DOCS = Object.fromEntries(
+  Object.entries(import.meta.glob('../../content/kinesiology/clips/*.json', { eager: true, import: 'default' }))
+    .map(([file, doc]) => [file.replace(/^.*\//, '').replace(/\.json$/, ''), doc])
+);
+// Movement Theater Phase 1 (Masterplan §2): time ownership, clip grid, telemetry.
+import { TimeController, LOOP_ONCE, LOOP_LOOP, LOOP_PINGPONG, SPEEDS as TIME_SPEEDS } from '../lib/kinesiology/TimeController.js';
+import { buildClipManifest, withContacts, collectManifestWarnings, AUTHORED_FPS } from '../lib/kinesiology/clipManifest.js';
+import { JointTracker, PhaseEngine, anglesFromAuthoredPose, bandForReadout, createHudScheduler } from '../lib/kinesiology/telemetry.js';
+import { ROM_SOURCES, ZERO_REFERENCE } from '../data/kinesiology/romBands.js';
 import { getDeviceProfile } from '../lib/deviceProfile.js';
 import { Icon } from './Icons';
-import walkClip from '../data/kinesiology/walk_cmu.bvh?raw';
-import jumpClip from '../data/kinesiology/jump_cmu.bvh?raw';
 
-const CLIPS = { walk_cmu: walkClip, jump_cmu: jumpClip };
+
+// Phase 2: the clips are baked, quantised assets — see
+// src/lib/kinesiology/motionTracks.js for why the BVH text is no longer loaded
+// at runtime and scripts/bake-motion-assets.mjs for how they are produced.
+const CLIP_DOCS = { walk_cmu: walkTracks, jump_cmu: jumpTracks };
 const PLANE_BY_ACTION = { walk: 'Sagittal', run: 'Sagittal', jump: 'Sagittal', wave: 'Frontal', handshake: 'Sagittal', chew: 'Transverse', talk: 'Multiple' };
 const SOURCE_BADGE = {
   cmu: 'CMU motion capture (retargeted)',
   authored: 'Authored teaching track — not motion capture'
 };
 
-function peakRoles(action) {
-  const roles = {};
-  for (let i = 0; i <= 48; i++) {
-    const levels = action.activations(i / 48);
-    for (const [key, level] of Object.entries(levels)) roles[key] = Math.max(roles[key] || 0, level);
-  }
-  for (const key of Object.keys(roles)) roles[key] = roles[key] >= 0.7 ? 'PM' : roles[key] >= 0.38 ? 'SY' : 'ST';
-  return roles;
-}
+// Phase 1: the reference band a readout is compared against, per action family.
+// Gait actions use the task band (a healthy walk uses a fraction of AAOS range);
+// everything else uses the AAOS clinical range for the same joint.
+const GAIT_READOUT_ACTIONS = new Set(['walk', 'run', 'tiptoe-walk', 'heel-walk']);
+const LOOP_LABELS = { [LOOP_ONCE]: 'Once', [LOOP_LOOP]: 'Loop', [LOOP_PINGPONG]: 'Ping-pong' };
+const READOUT_LABELS = { hip: 'Hip', knee: 'Knee', ankle: 'Ankle' };
+
+/**
+ * Phase 1 (Pillar 3): functional-role taxonomy from the clip's own activation
+ * envelope when no curated role is supplied.
+ *
+ *   Agonist   (PM) peak >= 0.70  — the muscle doing the work
+ *   Synergist (SY) peak >= 0.38  — assists / controls the same motion
+ *   Antagonist(AN) curated only  — opposing muscle; needs anatomical knowledge so
+ *                                 it is NEVER guessed from magnitude
+ *   Stabilizer(ST) peak >= 0.15  — holds a segment still (low, sustained)
+ *   Inactive  (IN) peak <  0.15  — not meaningfully engaged in this clip
+ *
+ * Curated roles in actions.js win; six actions still ship no curated roles
+ * (shrug, reach-up, head-signals, sidestep, sit-stand, lunge) and fall back to
+ * this envelope. Antagonist therefore only appears for curated clips in Phase 1 —
+ * Masterplan §4.1 moves the whole table to content/kinesiology/clips/*.json.
+ */
+// Pillar 4 angle reference (Masterplan §3.4 / Q11, decided on measurement).
+//
+// Retargeted clips are reported in SEGMENT terms: 0 deg means the two segments
+// are aligned (anatomical zero), which is what the geometry sampler measures and
+// what `anglesFromAuthoredPose` has always reported for the authored tracks. The
+// earlier clip-frame-0 calibration shifted the whole curve by whatever the first
+// frame happened to be, which (a) disagreed with the authored path and (b) made
+// the readings meaningless on clips that do not start standing:
+//
+//   clip    frame-0 raw hip/knee   clip-zero range (knee)   segment range (knee)
+//   walk         6 / 38 deg            -4 .. 25 deg            34 .. 63 deg
+//   jump        74 / 102 deg          -69 .. 3 deg             34 .. 123 deg
+//
+// A learner must never see "knee -69". The reference is therefore the segment
+// angle; `.kine-rom-note` states it, and the ROM band comparison only makes sense
+// against it.
+const ANGLE_REFERENCE = 'segment';
+const ANGLE_OFFSET = { hip: 0, knee: 0, ankle: 0 };
+
+/** Fallback for a muscle the activation document does not mention (never
+ *  activates in this action) — the taxonomy's inactive class, not a blank. */
+const INACTIVE_LEVELS = new Float32Array(ACTIVATION_ORDER.length);
+
+/** Display names for all five roles (actions.js only names the original three). */
+const ROLE_NAMES = { PM: 'Agonist', SY: 'Synergist', AN: 'Antagonist', ST: 'Stabilizer', IN: 'Inactive' };
+/** Plain-language contraction wording (pillar 3: state, not jargon). */
+const CONTRACTION_WORDS = {
+  concentric: 'shortening (driving the joint)',
+  eccentric: 'lengthening (braking the joint)',
+  isometric: 'holding (no length change)',
+  mixed: 'mixed (alternating)',
+  inactive: 'not active in this clip'
+};
+/** Evidence-basis badge text: measured vs authored (the disclaimer contract §4.3). */
+const BASIS_LABEL = { EMG: 'measured timing', 'kinesiology-text': 'textbook', 'authored-teaching': 'authored teaching' };
+const ROLE_ORDER = ['PM', 'SY', 'AN', 'ST', 'IN'];
 
 export default function KinesiologyTheater({ activeView, reducedMotion, playing, setPlaying, speed, setSpeed, apiRef }) {
   const mountRef = useRef(null);
   const meterRefs = useRef({});
+  const meterValueRef = useRef({});
+  // ---- M1 measurement harness (Masterplan §5.5, §6 Phase 1 gate) ----------
+  // The harness has to be reachable on a *physical device*: typing console
+  // snippets into a phone is not a protocol anyone can run. In DEV it is always
+  // offered; a production build only reveals it behind `?m1=1`, so the visual
+  // gate and normal users never see it.
+  const [m1Enabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (import.meta.env.DEV) return true;
+    try { return new URLSearchParams(window.location.search).has('m1'); } catch { return false; }
+  });
+  const [m1, setM1] = useState(null);
+  const m1TimerRef = useRef(null);
+  const reportRef = useRef(null);
   const [actionId, setActionId] = useState('walk');
   const [cameraId, setCameraId] = useState('anterior');
   const orbitRef = useRef(false); // Phase 119 (R10): user grab temporarily frees any preset camera
@@ -63,6 +150,13 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   });
   const [markersOn, setMarkersOn] = useState(false);
   const [heatMode, setHeatMode] = useState(false);
+  // Phase 1 (Pillar 2/5): transport + camera ownership state. `loopMode` is the
+  // user's choice for THIS action; the default is a single pass, not an endless
+  // autoplay loop (audit A1).
+  const [loopMode, setLoopMode] = useState(LOOP_ONCE);
+  const [plane, setPlane] = useState('free');
+  const [anchorJoint, setAnchorJoint] = useState(null);
+  const [snapInfo, setSnapInfo] = useState({ id: null, label: null });
   const [camError, setCamError] = useState(null);
   const [logOn, setLogOn] = useState(false);
   const [hintIdx, setHintIdx] = useState(0);
@@ -157,15 +251,46 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     URL.revokeObjectURL(a.href);
   };
   const [angleData, setAngleData] = useState(null);
+  const [manifests, setManifests] = useState(null); // Phase 1: one frame grid per action (§2.1)
   const angleOffsetsRef = useRef({});
   const angleMarkerRefs = useRef({});
   const angleValRefs = useRef({});
   const [caption, setCaption] = useState('');
   const [phaseName, setPhaseName] = useState('');
+  // ---- Phase 1: single source of truth for time -----------------------------
+  const timeRef = useRef(null);
+  const manifestsRef = useRef(null);
+  const mapFrameRef = useRef(null);        // registered by the stage: frame -> normalized service
+  const trackersRef = useRef(null);        // JointTracker per readout, created when a manifest lands
+  const phaseEngineRef = useRef(new PhaseEngine());
+  const hudSchedRef = useRef(createHudScheduler(15));
+  const directorRef = useRef(null);
+  const scrubRef = useRef(null);
+  const scrubDragRef = useRef(false);
+  const hudRefs = useRef({});
+  const lastFrameRef = useRef({ index: -1, phase: '', outOfBand: false, action: null, playing: null });
+  const scrubReadoutRef = useRef(null);
   const action = ACTION_BY_ID[actionId];
-  const roles = useMemo(() => ({ ...peakRoles(action), ...(action.roles || {}) }), [action]);
+  // One decode per action switch (sub-millisecond): the document is plain JSON.
+  const activation = useMemo(
+    () => (ACTIVATION_DOCS[actionId] ? decodeActivation(ACTIVATION_DOCS[actionId], { knownIds: ACTIVATION_ID_SET }) : null),
+    [actionId]
+  );
+  const activationRef = useRef(activation);
+  activationRef.current = activation;
+  const roles = useMemo(() => {
+    const out = {};
+    for (const id of ACTIVATION_ORDER) out[id] = activation ? activation.roleFor(id) : 'IN';
+    return out;
+  }, [activation]);
+  //: Contraction mode changes far slower than the playhead; this drives the
+  //: "working now" line in the facts card, re-computed only when the joint does.
+  const [contractionNow, setContractionNow] = useState(null);
   const rolesRef = useRef(roles);
   rolesRef.current = roles;
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
+  const contractionRef = useRef(null);
   const playRef = useRef(playing && !reducedMotion);
   playRef.current = playing && !reducedMotion;
   const speedRef = useRef(speed);
@@ -193,16 +318,119 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   stateRef.current.trails = trails;
   stateRef.current.markersOn = markersOn;
   stateRef.current.heatMode = heatMode;
+  stateRef.current.clipManifest = manifestsRef.current?.[actionId] || null;
   qualityRef.current = quality;
   useEffect(() => { orbitRef.current = false; }, [cameraId]); // Phase 119 (R10): preset tap re-takes the camera
 
+  /**
+   * Phase 1 (Pillar 2): (re)create the clock whenever the frame grid changes.
+   * The grid comes from the manifest, so playback, stepping, the scrubber and
+   * the telemetry can never disagree about which frame is current (audit A19).
+   * A manifest refresh for the SAME action (e.g. a quality rebuild) keeps the
+   * learner's position instead of rewinding them to frame 0.
+   */
+  useEffect(() => {
+    const manifest = manifests?.[actionId];
+    const fps = manifest?.fps || AUTHORED_FPS;
+    const frameCount = manifest?.frameCount || Math.max(2, Math.round(action.duration * AUTHORED_FPS));
+    const previous = timeRef.current;
+    const keep = previous && previous.fps === fps && previous.frameCount === frameCount;
+    const controller = keep ? previous : new TimeController({ fps, frameCount, loopMode, speed });
+    controller.setClip({ fps, frameCount, loopMode, speed, keepPosition: keep });
+    controller.setSpeed(TIME_SPEEDS.includes(speed) ? speed : 1);
+    if (!keep) {
+      controller.reset();
+      if (playRef.current) controller.play();
+    }
+    timeRef.current = controller;
+    trackersRef.current = Object.fromEntries(
+      ['hip', 'knee', 'ankle'].map((id) => [id, new JointTracker({
+        id,
+        label: READOUT_LABELS[id],
+        band: bandForReadout(id, { gait: GAIT_READOUT_ACTIONS.has(actionId) }),
+        neutral: 0,
+        filter: { minCutoff: 1.0, beta: 0.02, dCutoff: 1.0 }
+      })])
+    );
+    phaseEngineRef.current.reset();
+    hudSchedRef.current.invalidate();
+    lastFrameRef.current = { index: -1, phase: '', outOfBand: false };
+    mapFrameRef.current = (frame) => {
+      const total = Math.max(1, controller.frameCount - 1);
+      return { frame, total, tNorm: frame / total, tSeconds: frame * controller.frameTime };
+    };
+    return () => { if (manifestsRef.current) manifestsRef.current.mapped = mapFrameRef.current; };
+  }, [actionId, action.duration, manifests, loopMode, speed]);
+
+  // Transport knobs write to the clock, never the other way round.
+  useEffect(() => { timeRef.current?.setLoopMode(loopMode); }, [loopMode]);
+  useEffect(() => { timeRef.current?.setSpeed(TIME_SPEEDS.includes(speed) ? speed : 1); }, [speed]);
+  useEffect(() => {
+    const controller = timeRef.current;
+    if (!controller) return;
+    if (playing && !reducedMotion) controller.play();
+    else controller.pause();
+  }, [playing, reducedMotion]);
+
   useEffect(() => {
     if (apiRef) apiRef.current = {
-      reset: () => { stateRef.current.time = 0; },
-      step: (dt) => { stateRef.current.time += dt; },
-      setTime: (t) => { stateRef.current.time = t; }
+      reset: () => { timeRef.current?.reset(); setPlaying(false); },
+      step: (seconds) => { timeRef.current?.seekSeconds((timeRef.current?.tSeconds || 0) + Number(seconds || 0)); },
+      stepFrames: (frames) => { timeRef.current?.stepFrames(frames); setPlaying(false); },
+      setTime: (t) => { timeRef.current?.seekSeconds(t); },
+      seekFrame: (frame) => { timeRef.current?.seekFrame(frame); },
+      play: () => setPlaying(true),
+      pause: () => setPlaying(false),
+      getState: () => (timeRef.current ? {
+        frame: timeRef.current.frameIndex,
+        frames: timeRef.current.frameCount,
+        tSeconds: timeRef.current.tSeconds,
+        tNorm: timeRef.current.tNorm,
+        playing: timeRef.current.playing,
+        loopMode: timeRef.current.loopMode
+      } : null),
+      getScrubLatencyMs: () => (window.__kinePerf?.scrubLatencyMs ?? null)
     };
-  }, [apiRef]);
+  }, [apiRef, setPlaying]);
+
+  // ---- Phase 1: transport + telemetry view helpers (§3.1, §3.3) ------------
+  const manifest = manifests?.[actionId] || null;
+  const snapList = useMemo(() => (manifest?.snapPoints || []).slice(0, 8), [manifest]);
+  const bands = useMemo(() => {
+    const gait = GAIT_READOUT_ACTIONS.has(actionId);
+    return Object.fromEntries(['hip', 'knee', 'ankle'].map((j) => [j, bandForReadout(j, { gait })]));
+  }, [actionId]);
+  const bandLabel = (j) => {
+    const b = bands[j];
+    if (!b) return '–';
+    const range = `${Math.round(b.min)}–${Math.round(b.max)}°`;
+    return b.kind === 'task' ? `task ${range}` : range;
+  };
+
+  // Scrub: pause the clock, seek without jitter, resume if it was playing.
+  const scrubWasPlayingRef = useRef(false);
+  const beginScrub = () => {
+    if (scrubDragRef.current) return;
+    scrubDragRef.current = true;
+    scrubWasPlayingRef.current = Boolean(timeRef.current?.playing);
+    timeRef.current?.beginScrub();
+  };
+  const endScrub = () => {
+    if (!scrubDragRef.current) return;
+    scrubDragRef.current = false;
+    timeRef.current?.endScrub();
+    if (scrubWasPlayingRef.current && !reducedMotion) { timeRef.current?.play(); setPlaying(true); }
+  };
+  // A snap point chosen by the user is shown until the next transport action.
+  useEffect(() => { setSnapInfo({ id: null, label: null }); }, [actionId]);
+
+  // Reaching the end of a "once" clip releases the external play button too, so
+  // the transport never lies about the clock's state (audit A6).
+  useEffect(() => {
+    const tc = timeRef.current;
+    if (!tc) return undefined;
+    return tc.subscribe('ended', () => setPlaying(false));
+  }, [manifests, actionId, setPlaying]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -314,54 +542,89 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     ghost.root.visible = false;
     scene.add(ghost.root);
     ghostRigRef.current = ghost;
-    const parsed = Object.fromEntries(Object.entries(CLIPS).map(([name, text]) => {
-      const bvh = parseBVH(text);
-      const cal = finalizeGround(THREE, rig, bvh, computeCalibration(THREE, bvh));
-      return [name, { bvh, cal, stance: { left: computeStanceData(THREE, rig, bvh, cal, 'left'), right: computeStanceData(THREE, rig, bvh, cal, 'right') } }];
+    // Phase 2: decode the baked assets and derive only the rig-dependent parts.
+    // The old loader parsed ~196 kB of BVH text and ran 361 full-scene
+    // updateMatrixWorld sweeps (~50 ms desktop); this needs none.
+    const parsed = Object.fromEntries(Object.entries(CLIP_DOCS).map(([name, doc]) => {
+      const tracks = decodeClipTracksMap({ [name]: doc })[name];
+      const yOffset = groundOffsetForRig(THREE, rig, tracks);
+      const stance = stanceForRig(THREE, rig, tracks, yOffset);
+      return [name, { tracks, yOffset, stance }];
     }));
     // Phase 81 (B3): spatiotemporal honesty stats measured from the captured walk.
     {
       const wk = parsed.walk_cmu;
-      let travel = 0, prev = null;
-      for (let f = 0; f < wk.bvh.frames; f += 2) {
-        applyBVHFrame(THREE, rig, wk.bvh, f, wk.cal, { treadmill: false });
-        const p = rig.bones.root.position;
-        if (prev) travel += Math.hypot(p.x - prev.x, p.z - prev.z);
-        prev = { x: p.x, z: p.z };
-      }
-      const seconds = wk.bvh.frames * wk.bvh.frameTime;
-      const windows = [...wk.stance.left.windows.map((w) => w), ...wk.stance.right.windows].sort((a, b) => a.start - b.start);
-      const cadence = Math.round((windows.length / seconds) * 60);
-      stateRef.current.contacts = windows.map((w) => w.start);
-      // Step length from raw root travel per detected step (treadmill-neutral).
-      const stepLen = windows.length > 0 ? travel / windows.length : 0;
-      const lw = wk.stance.left.windows, rw = wk.stance.right.windows;
-      const dl = lw.length ? lw.reduce((a, w) => a + (w.end - w.start), 0) / lw.length : 0;
-      const dr = rw.length ? rw.reduce((a, w) => a + (w.end - w.start), 0) / rw.length : 0;
-      const asym = dl && dr ? Math.round((Math.abs(dl - dr) / ((dl + dr) / 2)) * 100) : null;
-      setGaitStats({ speed: +(travel / seconds).toFixed(2), cadence, step: +stepLen.toFixed(2), asym });
-      applyBVHFrame(THREE, rig, wk.bvh, 0, wk.cal);
+      const gait = gaitStatsFromTracks(wk.tracks, wk.stance);
+      stateRef.current.contacts = gait.contacts;
+      setGaitStats({ speed: gait.speed, cadence: gait.cadence, step: gait.step, asym: gait.asym });
+      applyTrackFrame(THREE, rig, wk.tracks, 0, { yOffset: wk.yOffset });
     }
 
-    // Phase 82: precompute sagittal angle curves + standing calibration per clip.
+    // Phase 82 (updated in Phase 2): sagittal angle curves. The baked quaternions
+    // carry the pose, so no scene graph is involved — the curves are pure
+    // quaternion algebra (`trackAngles`), and the two readout paths still agree.
     {
       const data = {};
       for (const key of ['walk_cmu', 'jump_cmu']) {
         const c = parsed[key];
-        const apply = (f) => applyBVHFrame(THREE, rig, c.bvh, f, c.cal);
-        const offset = calibrateAngles(THREE, rig, apply, [0]);
+        // The reference is the anatomical one, so the offset is zero — see
+        // ANGLE_REFERENCE above for the measurements behind the decision.
+        const offset = ANGLE_OFFSET;
         angleOffsetsRef.current[key] = offset;
         const N = 60;
         const hip = [], knee = [], ankle = [];
         for (let i = 0; i < N; i++) {
-          const a = sampleSagittalAngles(THREE, rig, apply, Math.round((i / (N - 1)) * (c.bvh.frames - 1)), c.cal, offset);
+          const a = trackAngles(THREE, c.tracks, Math.round((i / (N - 1)) * (c.tracks.frames - 1)), offset);
           hip.push(a.hip); knee.push(a.knee); ankle.push(a.ankle);
         }
         data[key] = { hip, knee, ankle };
       }
       setAngleData(data);
-      stateRef.current.clipsMeta = Object.fromEntries(Object.entries(parsed).map(([k, v]) => [k, { frames: v.bvh.frames, frameTime: v.bvh.frameTime }]));
+      stateRef.current.clipsMeta = Object.fromEntries(Object.entries(parsed).map(([k, v]) => [k, { frames: v.tracks.frames, frameTime: v.tracks.frameTime }]));
     }
+
+    // Phase 1 (Masterplan §2.1/§3.3): one manifest per action. The frame grid is
+    // derived from the clip, snap points come from the angle curves and the
+    // detected stance windows, and any declared-duration mismatch is reported
+    // instead of being silently absorbed (audit A19).
+    {
+      const sampleClipAngles = (key) => {
+        const c = parsed[key];
+        const offset = angleOffsetsRef.current[key];
+        if (!c || !offset) return null;
+        return (frame) => trackAngles(THREE, c.tracks, frame, offset);
+      };
+      const next = {};
+      for (const a of ACTIONS) {
+        const clipKey = a.clip ? a.clip.replace('.bvh', '') : null;
+        const clipMeta = clipKey ? stateRef.current.clipsMeta?.[clipKey] : null;
+        const manifest = buildClipManifest({
+          action: a,
+          clipMeta: clipMeta || null,
+          sampleAngles: clipKey ? sampleClipAngles(clipKey) : null
+        });
+        if (clipKey) {
+          const contacts = [];
+          for (const side of ['left', 'right']) {
+            for (const window of parsed[clipKey]?.stance?.[side]?.windows || []) contacts.push({ side, frame: window.start });
+          }
+          next[a.id] = withContacts(manifest, contacts);
+        } else {
+          next[a.id] = withContacts(manifest, []);
+        }
+      }
+      manifestsRef.current = next;
+      const warnings = collectManifestWarnings(next);
+      if (warnings.length) console.info('[movement-theater] clip grid notes:', warnings.join(' | '));
+      setManifests(next);
+    }
+
+    // Phase 1 (Pillar 5): one camera director owns smoothing, anchoring, planes
+    // and limits. Fixed per-frame lerps are gone: damping is expressed as half
+    // lives, so 60 Hz and 120 Hz devices behave identically (audit A13).
+    // (OrbitControls is created just below; the director takes it then.)
+    const director = new CameraDirector({ THREE, camera });
+    directorRef.current = director;
 
     // R12: mouse wheel must keep scrolling the PAGE, not zoom the camera —
     // registered before OrbitControls so it wins the wheel event (pinch on
@@ -380,18 +643,49 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     // page scrolling when the swipe starts on the figure. pan-y restores
     // vertical scrolling; horizontal drags orbit, pinch dollies.
     renderer.domElement.style.touchAction = 'pan-y';
-    const onGrab = () => { orbitRef.current = true; };
+    const onGrab = () => { orbitRef.current = true; directorRef.current?.userOrbit(); };
     renderer.domElement.addEventListener('pointerdown', onGrab);
+    director.controls = controls;
+    director.applyLimits();
+    controls.target.copy(director.look);
 
     let raf = 0;
     let last = performance.now();
     let lastCaption = '';
     let lastName = '';
     let actFrame = 0;
+    // Phase 1: scratch objects reused every frame — the audit found the old loop
+    // allocating vectors, colours and line geometries at 60 Hz (A5).
+    const scratchVec = new THREE.Vector3();
+    const scratchQuat = new THREE.Quaternion();
+    const scratchCom = new THREE.Vector3();
+    const SEGMENT_WEIGHTS = { head: 0.08, root: 0.3, spine: 0.1, chest: 0.1, leftUpLeg: 0.1, rightUpLeg: 0.1, leftLeg: 0.045, rightLeg: 0.045, leftFoot: 0.015, rightFoot: 0.015, leftUpperArm: 0.03, rightUpperArm: 0.03, leftForeArm: 0.02, rightForeArm: 0.02, leftHand: 0.01, rightHand: 0.01 };
+    for (const tl of trailRef.current || []) {
+      tl.maxPoints = 110;
+      tl.line.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(tl.maxPoints * 3), 3));
+      tl.line.geometry.setDrawRange(0, 0);
+      tl.line.geometry.attributes.position.usage = THREE.DynamicDrawUsage;
+    }
+    comLineRef.current.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(160 * 3), 3));
+    comLineRef.current.geometry.setDrawRange(0, 0);
+
+    /** Copy a list of Vector3 into a preallocated line buffer (no reallocation). */
+    const writeLine = (line, points) => {
+      const attr = line.geometry.getAttribute('position');
+      const count = Math.min(points.length, attr.count);
+      for (let i = 0; i < count; i++) {
+        const p = points[i];
+        attr.setXYZ(i, p.x, p.y, p.z);
+      }
+      attr.needsUpdate = true;
+      line.geometry.setDrawRange(0, count);
+    };
+
     const tick = (now) => {
       raf = requestAnimationFrame(tick);
       if (stateRef.current.contextLost) return;
-      const dt = Math.min(0.05, (now - last) / 1000);
+      const dtMs = Math.min(250, now - last);
+      const dt = Math.min(0.05, dtMs / 1000);
       // Phase 101 (V6): FPS auto-guard — sustained slowness on auto drops to fast tier.
       if (qualityRef.current === 'auto') {
         emaRef.current = emaRef.current * 0.95 + ((now - last) / 1000) * 0.05;
@@ -403,19 +697,50 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         }
       }
       last = now;
+      // M1 harness: keep a bounded ring of real frame times, so a device
+      // session can be turned into p95 numbers instead of impressions.
+      if (window.__kinePerf) {
+        const frames = window.__kinePerf.frames;
+        frames.push(dtMs);
+        if (frames.length > 240) frames.shift();
+        window.__kinePerf.frameCount = (window.__kinePerf.frameCount || 0) + 1;
+      }
       const st = stateRef.current;
       const act = ACTION_BY_ID[st.actionId];
-      if (playRef.current) st.time += dt * (st.rehearse ? 1 : speedRef.current); // Phase 89 (D1): PETTLEP Timing — rehearsal at real speed
-      const t = act.loop ? st.time % act.duration : Math.min(st.time, act.duration);
-      const tn = t / act.duration;
+      // ---- Phase 1 (Pillar 2): the clock advances here and nowhere else ------
+      // The controller owns play/pause, loop mode, speed and the integer frame
+      // index; every consumer below (pose, foot plant, activation, telemetry,
+      // scrubber, ribbon) reads that same index in this same tick.
+      const tc = timeRef.current;
+      const advanced = tc ? tc.advance(dtMs) : 0;
+      const t = tc ? tc.tSeconds : 0;
+      const tn = tc ? tc.tNorm : 0;
+      const frameIndex = tc ? tc.frameIndex : 0;
+      st.time = t;                       // legacy mirror for annotations/study mode
+      st.frameIndex = frameIndex;
+      const frameChanged = frameIndex !== lastFrameRef.current.index;
+      // Phase 1 gate (Masterplan §6): the HUD must publish *nothing* while the
+      // scene is idle. The scheduler alone is time-based, so a paused scene
+      // would rewrite ~90 nodes 15x/s with unchanged values; gate it on an
+      // actual change of the integer frame, the action, or the transport.
+      const playingNow = !!(tc && tc.playing);
+      const hudDirty = frameChanged
+        || st.actionId !== lastFrameRef.current.action
+        || playingNow !== lastFrameRef.current.playing;
+      if (frameChanged) {
+        lastFrameRef.current.index = frameIndex;
+        hudSchedRef.current.invalidate(); // a seek/step must publish immediately
+      }
 
       // Phase 86 (D4): segmenting — auto-pause at phase boundaries in study mode.
       if (st.studyMode && playRef.current && tn >= lastTnRef.current) {
         for (const ph of act.phases.slice(0, -1)) {
           if (lastTnRef.current < ph.until && tn >= ph.until) {
             setPlaying(false);
-            const lv = act.activations(Math.min(1, ph.until + 0.02));
-            const top = Object.entries(lv).sort((a, b) => b[1] - a[1])[0]?.[0];
+            const lv = activation ? activation.levelsAt(Math.min(1, ph.until + 0.02)) : INACTIVE_LEVELS;
+            let topIdx = 0;
+            for (let i = 1; i < lv.length; i++) if (lv[i] > lv[topIdx]) topIdx = i;
+            const top = lv[topIdx] > 0 ? ACTIVATION_ORDER[topIdx] : null;
             const fo = Object.keys(roles).filter((k) => k !== top).sort(() => Math.random() - 0.5).slice(0, 2);
             setStudyPause({ pct: Math.round(ph.until * 100), label: ph.rla || ph.name, predict: top ? [top, ...fo].sort(() => Math.random() - 0.5) : null, predictCorrect: top, predictFeedback: null });
             break;
@@ -425,15 +750,25 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
       lastTnRef.current = tn;
 
       Object.values(rig.bones).forEach((b) => b.rotation.set(0, 0, 0));
+      let poseAngles = null;
       if (act.source === 'cmu') {
         const clip = parsed[act.clip.replace('.bvh', '')];
-        const frame = Math.min(clip.bvh.frames - 1, Math.floor(tn * clip.bvh.frames));
-        applyBVHFrame(THREE, rig, clip.bvh, frame, clip.cal);
+        // The integer frame index is authoritative: no duration/time remapping,
+        // so a retimed clip cannot drift (audit A19).
+        const frame = Math.min(clip.tracks.frames - 1, frameIndex);
+        applyTrackFrame(THREE, rig, clip.tracks, frame, { yOffset: clip.yOffset });
         rig.root.updateMatrixWorld(true);
         applyFootPlant(THREE, rig, frame, clip.stance.left, 'left');
         applyFootPlant(THREE, rig, frame, clip.stance.right, 'right');
+        rig.root.updateMatrixWorld(true);
+        const offset = angleOffsetsRef.current[act.clip.replace('.bvh', '')];
+        if (offset) poseAngles = trackAngles(THREE, clip.tracks, frame, offset);
       } else {
-        applyAuthoredPose(rig, AUTHORED_ACTIONS[st.actionId].pose(t));
+        const pose = AUTHORED_ACTIONS[st.actionId].pose(t);
+        applyAuthoredPose(rig, pose);
+        // Authored tracks have exact joint values, so they get the same live
+        // telemetry as retargeted clips (no geometry sampling needed).
+        poseAngles = anglesFromAuthoredPose(pose);
       }
 
       // Phase 92 (C6/D7): translucent clinical-pattern ghost beside the figure.
@@ -450,7 +785,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
           Object.values(ghostRigRef.current.bones).forEach((b) => b.rotation.set(0, 0, 0));
           if (act.source === 'cmu') {
             const clip = parsed[act.clip.replace('.bvh', '')];
-            applyBVHFrame(THREE, ghostRigRef.current, clip.bvh, Math.min(clip.bvh.frames - 1, Math.floor((t2 / act.duration) * clip.bvh.frames)), clip.cal);
+            applyTrackFrame(THREE, ghostRigRef.current, clip.tracks, Math.min(clip.tracks.frames - 1, Math.floor((t2 / act.duration) * clip.tracks.frames)), { yOffset: clip.yOffset });
           } else {
             applyAuthoredPose(ghostRigRef.current, AUTHORED_ACTIONS[st.actionId].pose(t2));
           }
@@ -458,22 +793,25 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
       }
 
       // Phase 90 (C9): segment-weighted CoM trail + vertical displacement honesty.
+      // Phase 1: no per-frame allocation — scratch vector + preallocated buffer.
       {
-        const W = { head: 0.08, root: 0.3, spine: 0.1, chest: 0.1, leftUpLeg: 0.1, rightUpLeg: 0.1, leftLeg: 0.045, rightLeg: 0.045, leftFoot: 0.015, rightFoot: 0.015, leftUpperArm: 0.03, rightUpperArm: 0.03, leftForeArm: 0.02, rightForeArm: 0.02, leftHand: 0.01, rightHand: 0.01 };
-        const com = new THREE.Vector3();
+        const com = scratchCom.set(0, 0, 0);
         let tw = 0;
-        for (const [b, w] of Object.entries(W)) { const bone = rig.bones[b]; if (!bone) continue; const v = new THREE.Vector3(); bone.getWorldPosition(v); com.addScaledVector(v, w); tw += w; }
+        for (const [b, w] of Object.entries(SEGMENT_WEIGHTS)) {
+          const bone = rig.bones[b];
+          if (!bone) continue;
+          bone.getWorldPosition(scratchVec);
+          com.addScaledVector(scratchVec, w);
+          tw += w;
+        }
         com.multiplyScalar(1 / tw);
         const c = comRef.current;
-        c.trail.push(com.clone());
+        c.trail.push({ x: com.x, y: com.y, z: com.z });
         if (c.trail.length > 160) c.trail.shift();
         c.ys.push(com.y);
         if (c.ys.length > 160) c.ys.shift();
         if (c.ys.length > 60) c.vert = Math.round((Math.max(...c.ys) - Math.min(...c.ys)) * 100);
-        if (comLineRef.current && c.trail.length > 1) {
-          comLineRef.current.geometry.setFromPoints(c.trail);
-          comLineRef.current.geometry.attributes.position.needsUpdate = true;
-        }
+        if (comLineRef.current && c.trail.length > 1) writeLine(comLineRef.current, c.trail);
         if (audioRef.current) {
           const kneeVal = angleValRefs.current.knee ? parseFloat(angleValRefs.current.knee.textContent) : 20;
           audioRef.current.osc.frequency.setTargetAtTime(180 + ((Math.min(80, Math.max(-30, kneeVal)) + 30) / 110) * 480, audioRef.current.ctx.currentTime, 0.05);
@@ -481,37 +819,135 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         }
       }
 
-      // Phase 82: live sagittal angle readout for CMU clips.
-      if (act.source === 'cmu') {
-        const key = act.clip.replace('.bvh', '');
-        const offset = angleOffsetsRef.current[key];
-        if (offset) {
-          const a = sampleSagittalAngles(THREE, rig, () => {}, 0, null, offset);
+      // Activation levels drive the muscle colour every frame (motion), while
+      // their numeric readouts are published on the 15 Hz HUD slot below. The
+      // buffer is REUSED by the decoder — read it now, never store it.
+      const curve = activationRef.current;
+      const levels = curve ? curve.levelsAt(tn) : INACTIVE_LEVELS;
+
+      // ---- Phase 1 (Pillar 4): telemetry is COMPUTED at 60 Hz but PUBLISHED at
+      // 15 Hz. Discrete events (a phase change, an out-of-reference-range entry
+      // or exit, a user seek) call invalidate() and bypass the gate, so the UI
+      // never feels laggy about the things that matter while the figure keeps
+      // its 60 FPS budget (audit A4).
+      if (poseAngles && trackers) {
+        let anyOutOfBand = false;
+        for (const j of ['hip', 'knee', 'ankle']) {
+          const tracker = trackers[j];
+          if (!tracker) continue;
+          tracker.update(poseAngles[j], dtMs);
+          if (tracker.outOfBand) anyOutOfBand = true;
+        }
+        const primaryJoint = trackers.knee || trackers.hip;
+        const label = primaryJoint
+          ? phaseEngineRef.current.update({ id: primaryJoint.id, value: primaryJoint.value, velocity: primaryJoint.velocity }, dtMs)
+          : 'Neutral';
+        // A phase change or a band entry/exit is a discrete event: publish it now
+        // rather than waiting for the next 66 ms slot, and announce it once.
+        if (label !== lastFrameRef.current.phase || anyOutOfBand !== lastFrameRef.current.outOfBand) {
+          lastFrameRef.current.phase = label;
+          lastFrameRef.current.outOfBand = anyOutOfBand;
+          hudSchedRef.current.invalidate();
+        }
+        st.telemetry = { angles: poseAngles, phase: label, outOfBand: anyOutOfBand, filters: trackers };
+      }
+      if (hudDirty && hudSchedRef.current.due(now)) {
+        hudSchedRef.current.mark(now);
+        lastFrameRef.current.action = st.actionId;
+        lastFrameRef.current.playing = playingNow;
+        const hud = hudRefs.current;
+        const perf = window.__kinePerf;
+        let writes = 0; // DOM writes this publication, for the M1 15 Hz audit
+        const primary = trackers ? (trackers.knee || trackers.hip) : null;
+        const phaseLabel = lastFrameRef.current.phase || 'Neutral';
+        if (poseAngles && trackers) {
           for (const j of ['hip', 'knee', 'ankle']) {
-            const el = angleValRefs.current[j];
-            if (el) el.textContent = `${Math.round(a[j])}°`;
+            const tracker = trackers[j];
+            if (!tracker) continue;
+            const value = Math.round(tracker.value);
+            const val = angleValRefs.current[j];
+            if (val) val.textContent = `${value}\u00b0`;
+            // The static 60-sample curve stays as the historical trace; this
+            // marker is the live playhead on it.
             const mk = angleMarkerRefs.current[j];
             if (mk) {
               mk.setAttribute('cx', `${(tn * 150).toFixed(1)}`);
-              mk.setAttribute('cy', `${(44 - ((Math.min(80, Math.max(-30, a[j])) + 30) / 110) * 44).toFixed(1)}`);
+              mk.setAttribute('cy', `${(44 - ((Math.min(80, Math.max(-30, tracker.value)) + 30) / 110) * 44).toFixed(1)}`);
+            }
+            if (hud[`${j}Value`]) {
+              hud[`${j}Value`].textContent = `${value}\u00b0`;
+              hud[`${j}MinMax`].textContent = `${Math.round(tracker.min)} \u2026 ${Math.round(tracker.max)}\u00b0`;
+              hud[`${j}Phase`].textContent = j === primary?.id ? phaseLabel : '';
+              hud[`${j}Arrow`].textContent = tracker.velocity > 1 ? '\u25b2' : tracker.velocity < -1 ? '\u25bc' : '\u25a0';
+              const row = hud[`${j}Row`];
+              if (row) row.dataset.outOfBand = tracker.outOfBand ? 'true' : 'false';
             }
           }
+          if (hud.bandSource) hud.bandSource.textContent = trackers.knee?.band?.source || '';
+        }
+        if (hud.phaseFeed) hud.phaseFeed.textContent = phaseLabel;
+        // Phase 3: the selected muscle's contraction state, on the same 15 Hz
+        // publication as every other number (scene stays at 60 FPS). Written only
+        // when the mode actually changes — a held contraction costs zero writes.
+        if (hud.contraction && curve && selectedRef.current) {
+          const mode = curve.contractionAt(selectedRef.current, tn) || 'inactive';
+          if (contractionRef.current !== mode) {
+            contractionRef.current = mode;
+            hud.contraction.textContent = CONTRACTION_WORDS[mode] || mode;
+            writes += 1;
+          }
+        }
+        // Legend meters: 54 bars, compositor-only transform, 15 Hz (audit A4).
+        // Write only when the bar actually moves (>= 1.5% of full scale): an
+        // inactive muscle costs zero writes instead of one per publication.
+        for (const [muscle, el] of Object.entries(meterRefs.current)) {
+          if (!el) continue;
+          const idx = ACTIVATION_INDEX.get(muscle);
+          const v = Math.min(1, Math.max(0, idx === undefined ? 0 : levels[idx] || 0));
+          const prev = meterValueRef.current[muscle];
+          if (prev !== undefined && Math.abs(prev - v) < 0.015) continue;
+          meterValueRef.current[muscle] = v;
+          el.style.transform = `scaleX(${v})`;
+          writes += 1;
+        }
+        if (hud.timeLabel) { hud.timeLabel.textContent = `${tc.tSeconds.toFixed(2)} s / ${tc.duration.toFixed(2)} s`; writes += 1; }
+        if (hud.frameLabel) { hud.frameLabel.textContent = `frame ${frameIndex + 1} / ${tc.frameCount}`; writes += 1; }
+        if (hud.playRate) { hud.playRate.textContent = `${tc.speed}\u00d7`; writes += 1; }
+        if (scrubReadoutRef.current) { scrubReadoutRef.current.textContent = `${tc.tSeconds.toFixed(2)} s \u00b7 f${frameIndex + 1}/${tc.frameCount}`; writes += 1; }
+        const scrub = scrubRef.current;
+        if (scrub) {
+          const span = Math.max(1, tc.frameCount - 1);
+          if (!scrubDragRef.current) scrub.value = String(Math.round((frameIndex / span) * 1000));
+          scrub.setAttribute('aria-valuenow', String(frameIndex + 1));
+          scrub.setAttribute('aria-valuemax', String(tc.frameCount));
+          scrub.setAttribute('aria-valuetext', `Frame ${frameIndex + 1} of ${tc.frameCount}, ${tc.tSeconds.toFixed(2)} seconds${trackers?.knee ? `, knee ${Math.round(trackers.knee.value)} degrees` : ''}`);
+        }
+        if (perf) {
+          perf.domWrites = (perf.domWrites || 0) + writes;
+          if (writes > (perf.peakDomWrites || 0)) perf.peakDomWrites = writes;
+        }
+        // Seek-latency (M1 harness): wall time from the input event to the frame
+        // actually presented in the next render.
+        if (perf && perf._seekMark != null && perf._seekTargetFrame === frameIndex) {
+          perf.scrubLatencyMs = +(now - perf._seekMark).toFixed(2);
+          perf._seekMark = null;
+          perf._seekTargetFrame = null;
         }
       }
 
-      // Phase 102 (W4): joint markers follow toggle.
-      if (rig.setMarkersVisible) rig.setMarkersVisible(Boolean(st.markersOn));
-      // Phase 103 (W3): heat colour mode.
-      if (rig.setHeatMode) rig.setHeatMode(Boolean(st.heatMode));
-
-      const levels = act.activations(tn);
       // Phase 78: on low-power tiers the emissive glow updates at half rate.
       if (!low || (actFrame++ % 2 === 0)) {
-        rig.setMusclesVisible(st.showMuscles);
-        rig.resetMuscles();
-        if (st.showMuscles) for (const [muscle, level] of Object.entries(levels)) rig.setMuscleActivation(muscle, level, rolesRef.current[muscle] || 'ST');
+        if (st.showMuscles) {
+          // Indexed walk over the canonical 54-muscle order: the decoder wrote a
+          // Float32Array, so this costs no property lookups and no allocation.
+          for (let i = 0; i < levels.length; i++) {
+            const level = levels[i];
+            if (level <= 0.001) continue;
+            const muscle = ACTIVATION_ORDER[i];
+            rig.setMuscleActivation(muscle, level, rolesRef.current[muscle] || 'ST');
+          }
+        }
       }
-      for (const [muscle, el] of Object.entries(meterRefs.current)) if (el) el.style.width = `${Math.round((levels[muscle] || 0) * 100)}%`;
 
       const phase = act.phases.find((p) => tn <= p.until) || act.phases[act.phases.length - 1];
       const dispName = phase.rla ? (st.termMode === 'rla' ? phase.rla : st.termMode === 'trad' ? phase.trad : `${phase.rla} (${phase.trad})`) : phase.name;
@@ -525,19 +961,20 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         for (const [name, bone] of Object.entries(rig.bones)) {
           const old = blend.snapshot.get(name);
           if (old) {
-            const target = bone.quaternion.clone();
-            bone.quaternion.copy(old.q).slerp(target, e);
+            // Reuse one scratch quaternion: the old loop allocated one per bone
+            // per frame for 400 ms after every action switch (audit A5).
+            scratchQuat.copy(bone.quaternion);
+            bone.quaternion.copy(old.q).slerp(scratchQuat, e);
           }
         }
         const oldRoot = blend.snapshot.get('root');
         if (oldRoot) {
-          const newRoot = rig.bones.root.position.clone();
-          rig.bones.root.position.copy(oldRoot.p).lerp(newRoot, e);
+          rig.bones.root.position.copy(oldRoot.p).lerp(scratchVec.copy(rig.bones.root.position), e);
         }
         if (w >= 1) blendRef.current = null;
       }
 
-      const cam = cameraStateFor(st.cameraId, st.time, reducedMotion, st.actionId);
+      const cam = cameraStateFor(st.cameraId, t, reducedMotion, st.actionId);
       // Phase 117 (R8): on square/portrait canvases (phones) the tuned desktop
       // camera distances leave the figure small; scale horizontal distance with
       // canvas aspect so the performer fills the frame on small screens.
@@ -546,9 +983,22 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         const f = Math.max(0.7, Math.min(1, asp / 1.5));
         if (f < 1 && cam.pos) cam.pos = [cam.pos[0] * f, cam.pos[1], cam.pos[2] * f];
       }
+      // Phase 1 (Pillar 5): one director decides who owns the camera — the
+      // tracking rule, or the learner's own orbit (which frees tracking until
+      // they ask for "re-center").
       const freeCam = (Boolean(cam.controls) || orbitRef.current) && viewRef.current !== 'quiz';
-      if (freeCam) controls.update();
-      else applyCamera(THREE, camera, rig, cam, act.focus);
+      if (directorRef.current) {
+        directorRef.current.setPreset(st.cameraId);
+        directorRef.current.update({
+          rig,
+          state: cam,
+          reducedMotion,
+          dtSeconds: dt,
+          manual: freeCam,
+          focusBone: act.focus,                       // the action's focal joint (audit A13)
+          framing: framingForAction(st.actionId)      // per-action distance, not a hardcoded walk
+        });
+      }
       // Phase 107 (W8): paused breathing micro-motion (stillness reads alive; reduced-motion ⇒ static).
       const pausedNow = !playRef.current && !reducedMotion;
       const br = pausedNow ? Math.sin(now / 650) : 0;
@@ -564,13 +1014,13 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
           tl.line.visible = show;
           if (show) {
             const b = rigRef.current.bones[tl.bone];
-            const wp = new THREE.Vector3();
-            b.getWorldPosition(wp);
+            b.getWorldPosition(scratchVec);
             tl.frame = (tl.frame || 0) + 1;
-            const last = tl.pts[tl.pts.length - 1];
-            if (tl.frame % 3 === 0 && (!last || last.distanceToSquared(wp) > 1e-6)) tl.pts.push(wp);
-            if (tl.pts.length > 110) tl.pts.shift();
-            if (tl.pts.length > 1) tl.line.geometry.setFromPoints(tl.pts);
+            const prev = tl.pts[tl.pts.length - 1];
+            const moved = !prev || (prev.x - scratchVec.x) ** 2 + (prev.y - scratchVec.y) ** 2 + (prev.z - scratchVec.z) ** 2 > 1e-6;
+            if (tl.frame % 3 === 0 && moved) tl.pts.push({ x: scratchVec.x, y: scratchVec.y, z: scratchVec.z });
+            if (tl.pts.length > tl.maxPoints) tl.pts.shift();
+            if (tl.pts.length > 1) writeLine(tl.line, tl.pts);
           }
         }
       }
@@ -643,7 +1093,93 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     renderer.xr.enabled = true; // Phase 94 (E6): optional immersive supplement
     xrRef.current = renderer;
     if (navigator.xr?.isSessionSupported) navigator.xr.isSessionSupported('immersive-vr').then((ok) => setXrAvailable(Boolean(ok))).catch(() => {});
-    if (import.meta.env.DEV) window.__kineDebug = { scene, camera, renderer, rig, THREE, ghost, strokes: strokesRef.current, trails: trailRef.current, markersVisible: () => rigRef.current?.markerGroup?.visible, outlineCount: () => Object.values(rigRef.current?.outlines || {}).filter((o) => o.visible).length, lastDualMode: () => lastDualMode, timeNow: () => stateRef.current.time, controls, orbitOn: () => orbitRef.current };
+    // ---- Phase 1 measurement harness (Masterplan M1) ------------------------
+    // Local-only counters so a device session can be turned into numbers the
+    // acceptance criteria can be checked against. Nothing leaves the device.
+    const perf = (window.__kinePerf = window.__kinePerf || { frames: [], domWrites: 0, peakDomWrites: 0, scrubLatencyMs: null, drawCalls: 0, triangles: 0 });
+    const debugHook = {
+      scene, camera, renderer, rig, THREE, ghost, controls,
+      strokes: strokesRef.current,
+      trails: trailRef.current,
+      markersVisible: () => Boolean(rigRef.current?.markerGroup?.visible),
+      outlineCount: () => Object.values(rigRef.current?.outlines || {}).filter((o) => o.visible).length,
+      lastDualMode: () => lastDualMode,
+      timeNow: () => (timeRef.current ? timeRef.current.tSeconds : stateRef.current.time),
+      // Phase 1 additions — the contracts the new specs assert against:
+      time: () => timeRef.current,
+      frameIndex: () => timeRef.current?.frameIndex ?? 0,
+      frameCount: () => timeRef.current?.frameCount ?? 0,
+      tNorm: () => timeRef.current?.tNorm ?? 0,
+      loopMode: () => timeRef.current?.loopMode ?? null,
+      speed: () => timeRef.current?.speed ?? 1,
+      playing: () => Boolean(timeRef.current?.playing),
+      manifest: () => manifestsRef.current?.[stateRef.current.actionId] || null,
+      // Frame -> normalized service for the grid-coverage check: every frame in
+      // the grid must map to a distinct, monotonic time stamp.
+      mapFrame: (frame) => (timeRef.current ? { frame, total: timeRef.current.frameCount - 1, tNorm: frame / Math.max(1, timeRef.current.frameCount - 1), tSeconds: frame / timeRef.current.fps } : null),
+      telemetry: () => stateRef.current.telemetry || null,
+      perf: () => ({
+        fps: perf.frames.length ? +(1000 / (perf.frames.reduce((a, b) => a + b, 0) / perf.frames.length)).toFixed(1) : null,
+        p95FrameMs: (() => {
+          if (perf.frames.length < 20) return null;
+          const sorted = [...perf.frames].sort((a, b) => a - b);
+          return +sorted[Math.floor(sorted.length * 0.95)].toFixed(2);
+        })(),
+        domWrites: perf.domWrites,
+        peakDomWrites: perf.peakDomWrites,
+        scrubLatencyMs: perf.scrubLatencyMs,
+        drawCalls: renderer.info.render.calls,
+        triangles: renderer.info.render.triangles
+      }),
+      seekLatencyMark: () => { perf._seekMark = performance.now(); },
+      orbitOn: () => orbitRef.current,
+      director: () => directorRef.current,
+      /**
+       * M1 measurement harness (Masterplan §5.5/§6 Phase 1 gate).
+       * `copy(JSON.stringify(__kineDebug.report(), null, 2))` in the device
+       * console produces the numbers the acceptance criteria are checked
+       * against — nothing is uploaded anywhere.
+       */
+      report: () => {
+        const info = renderer.info;
+        const rigStats = rigRef.current?.stats?.() || null;
+        const sorted = [...perf.frames].sort((a, b) => a - b);
+        const pick = (q) => (sorted.length ? +sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))].toFixed(2) : null);
+        return {
+          measuredAt: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          hardwareConcurrency: navigator.hardwareConcurrency || null,
+          devicePixelRatio: window.devicePixelRatio,
+          qualityTier: qualityRef.current,
+          canvas: { width: renderer.domElement.width, height: renderer.domElement.height },
+          frames: {
+            samples: sorted.length,
+            medianMs: pick(0.5),
+            p95Ms: pick(0.95),
+            worstMs: sorted.length ? +sorted[sorted.length - 1].toFixed(2) : null,
+            over33ms: sorted.filter((v) => v > 33.4).length
+          },
+          gpu: {
+            drawCalls: info.render.calls,
+            triangles: info.render.triangles,
+            programs: info.programs?.length ?? null,
+            geometries: info.memory.geometries,
+            textures: info.memory.textures
+          },
+          rig: rigStats,
+          hud: { domWritesPerSecond: perf.domWrites, peakWritesPerPublication: perf.peakDomWrites, targetHz: hudSchedRef.current.intervalMs },
+          scrubLatencyMs: perf.scrubLatencyMs,
+          clip: timeRef.current ? { fps: timeRef.current.fps, frameCount: timeRef.current.frameCount, frameIndex: timeRef.current.frameIndex } : null,
+          reducedMotion
+        };
+      }
+    };
+    // The report builder must survive into the production build for the M1
+    // button (a device run happens against `vite preview`, not the dev server).
+    reportRef.current = debugHook.report;
+    if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('m1'))) {
+      window.__kineDebug = debugHook;
+    }
 
     const raycaster = new THREE.Raycaster();
     const onPick = (event) => {
@@ -676,6 +1212,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
       renderer.domElement.removeEventListener('webglcontextlost', onCtxLost);
       renderer.domElement.removeEventListener('webglcontextrestored', onCtxRestored);
       controls.dispose();
+      directorRef.current = null;
       ghostRigRef.current?.dispose?.();
       rig.dispose();
       renderer.dispose();
@@ -683,17 +1220,12 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     };
   }, [reducedMotion, quality]);
 
-  // Phase 77: selection isolates one muscle (solo teaching mode).
+  // Phase 77 + Phase 1: selection isolates one muscle (solo teaching mode).
+  // Isolation is applied ONCE per change instead of per frame, and never flips
+  // 54 materials on every render (audit A14).
   useEffect(() => {
-    const rig = rigRef.current;
-    if (!rig) return;
-    Object.values(rig.muscles).forEach(({ mesh, mat }) => {
-      const dim = Boolean(selected) && mesh.userData.muscleId !== selected;
-      if (mat.transparent !== dim) mat.needsUpdate = true;
-      mat.transparent = dim;
-      mat.opacity = dim ? 0.12 : 1;
-    });
-  }, [selected]);
+    rigRef.current?.setIsolation?.(selected || null);
+  }, [selected, quality]);
 
   // Phase 83 (B4): origin/insertion pins on the selected muscle.
   useEffect(() => {
@@ -715,29 +1247,49 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   }, [selected]);
 
   // Phase 83 (B5): activation sparkline for the facts card.
+  const evidence = useMemo(() => (selected && activation ? activation.evidenceFor(selected) : null), [selected, activation]);
   const spark = useMemo(() => {
-    if (!selected) return null;
-    const act = ACTION_BY_ID[actionId];
+    if (!selected || !activation) return null;
     const N = 60;
+    const matrix = activation.sample(N);
+    const idx = ACTIVATION_INDEX.get(selected);
+    if (idx === undefined) return new Array(N).fill(0);
     const vals = [];
-    for (let i = 0; i < N; i++) {
-      const levels = act.activations(i / (N - 1));
-      vals.push(levels[selected] || 0);
-    }
+    for (let i = 0; i < N; i++) vals.push(matrix[i * ACTIVATION_ORDER.length + idx]);
     return vals;
-  }, [selected, actionId]);
+  }, [selected, actionId, activation]);
 
-  // Phase 102 (W7): outline the selected muscle for readability.
-  useEffect(() => { rigRef.current?.setMuscleOutline?.(selected, Boolean(selected)); }, [selected, actionId]);
+  // Phase 102 (W7) + Phase 1: outline the selected muscle. The rig owns ONE
+  // shared outline object, so selection never adds 54 transparent draws (A14)
+  // and `__kineDebug.outlineCount()` counts real outlines (A10).
+  useEffect(() => { rigRef.current?.setMuscleOutline?.(selected || null); }, [selected, actionId, quality]);
 
-  // Phase 75 (A8/D7): 0.4 s pose crossfade on action switches.
+  // Phase 1 (Pillar 3/5): toggles are applied on change, not in the render loop.
+  useEffect(() => { rigRef.current?.setMarkersVisible?.(markersOn); }, [markersOn, quality]);
+  useEffect(() => { rigRef.current?.setHeatMode?.(heatMode); }, [heatMode, quality]);
+
+  // Phase 75 (A8/D7): 0.4 s pose crossfade on action switches. The clock reset
+  // now belongs to the TimeController effect above; this effect only captures
+  // the outgoing pose so the two actions can be blended.
   const blendRef = useRef(null);
   useEffect(() => {
-    stateRef.current.time = 0;
     const snapshot = new Map();
     Object.entries(rigPoseSource()).forEach(([name, bone]) => snapshot.set(name, { q: bone.quaternion.clone(), p: bone.position.clone() }));
     blendRef.current = { snapshot, start: performance.now() };
+    timeRef.current?.reset();
+    if (playRef.current) timeRef.current?.play();
+    rigRef.current?.resetMuscles?.();   // clear leftover activation colour from the previous action
+    setStudyPause(null);
   }, [actionId]);
+
+  // Phase 1 (Pillar 5): plane + joint anchor are camera intent, not render state.
+  useEffect(() => { directorRef.current?.setPlane(plane); }, [plane]);
+  useEffect(() => {
+    const director = directorRef.current;
+    if (!director) return;
+    if (anchorJoint) director.setAnchor(anchorJoint, { plane });
+    else director.clearAnchor();
+  }, [anchorJoint, plane]);
 
   useEffect(() => {
     if (voiceOver && 'speechSynthesis' in window) {
@@ -812,6 +1364,62 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   }, [setPlaying, setSpeed]);
 
   const muscleList = useMemo(() => Object.keys(roles).sort(), [roles]);
+
+  // ---- M1 run/copy ---------------------------------------------------------
+  const m1ReportNow = (runSeconds) => {
+    const report = {
+      ...(reportRef.current?.() || { harnessMissing: true }),
+      runSeconds: runSeconds ?? null,
+      build: import.meta.env.DEV ? 'dev' : 'prod'
+    };
+    const text = JSON.stringify(report, null, 2);
+    try { console.log('[M1 report]', report); } catch { /* console may be absent */ }
+    setM1((prev) => ({ ...(prev || {}), left: 0, status: 'report ready \u00b7 long-press the box to copy', text }));
+    // Clipboard access needs a secure context; when it is missing the textarea
+    // above is the copy path (this is the common case on a LAN dev server).
+    navigator.clipboard?.writeText(text)
+      .then(() => setM1((prev) => ({ ...(prev || {}), status: 'report copied as JSON \u00b7 also logged to console' })))
+      .catch(() => {});
+  };
+
+  const finishM1 = (seconds) => {
+    if (m1TimerRef.current) { clearInterval(m1TimerRef.current); m1TimerRef.current = null; }
+    setPlaying(false);
+    m1ReportNow(seconds);
+  };
+
+  const startM1Run = () => {
+    if (m1TimerRef.current) clearInterval(m1TimerRef.current);
+    const perf = (window.__kinePerf = window.__kinePerf || {});
+    perf.frames = [];           // a fresh ring: 60 s at 60 FPS = 3,600 samples > 240, so
+    perf.domWrites = 0;         // the p95 below covers the tail of the run only
+    perf.peakDomWrites = 0;
+    perf.scrubLatencyMs = null;
+    perf.frameCount = 0;
+    try { timeRef.current?.seekFrame(0); } catch { /* nothing to seek yet */ }
+    setPlaying(true);
+    const seconds = 60;
+    const startedAt = performance.now();
+    setM1({ left: seconds, startedAt, status: 'running \u00b7 keep this tab in the foreground', text: '' });
+    const id = setInterval(() => {
+      const left = Math.max(0, seconds - Math.round((performance.now() - startedAt) / 1000));
+      if (left <= 0) { m1TimerRef.current = null; clearInterval(id); finishM1(seconds); return; }
+      setM1((prev) => ({ ...(prev || {}), left }));
+    }, 1000);
+    m1TimerRef.current = id;
+  };
+
+  const stopM1Run = () => {
+    if (!m1TimerRef.current) return;
+    clearInterval(m1TimerRef.current);
+    m1TimerRef.current = null;
+    const ranFor = m1?.startedAt ? Math.max(1, Math.round((performance.now() - m1.startedAt) / 1000)) : null;
+    setPlaying(false);
+    m1ReportNow(ranFor);
+  };
+
+  useEffect(() => () => { if (m1TimerRef.current) clearInterval(m1TimerRef.current); }, []);
+
 
   return <div className={`kinesiology-theater rep-${repMode}`} data-kinesiology-theater="true">
     {tour && <div className="kine-tour" role="dialog" aria-label="New to 3D? quick tour">
@@ -891,6 +1499,14 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
             <span>Typical comfortable adult gait ≈ 1.3 m/s · ~110 steps/min · 0.72 m step — this clip is a <em>leisurely</em> walk.</span>
             <small>Teaching estimate — not a clinical measurement.</small>
           </div>}
+          {/* Panel ownership after Phase 1 (no duplication of truth):
+              .kine-angles = the *trace* panel — the precomputed curve, the gait
+              band and the playhead marker, so a learner sees where in the cycle
+              the value sits. .kine-rom = the *number* panel — live value, min/max,
+              phase, arrow and the AAOS/gait reference band with its provenance.
+              Both are written from the SAME tracker object in the same 15 Hz
+              publication, so they cannot disagree; the split is trace vs number,
+              not two angle paths (that was the audit A19 defect fixed in Phase 1). */}
           {action.source === 'cmu' && angleData && <div className="kine-angles" aria-label="Left leg sagittal joint angles">
             <span className="eyebrow">LEFT LEG ANGLES · SAGITTAL</span>
             {['hip', 'knee', 'ankle'].map((j) => <div className="kine-angle-row" key={j}>
@@ -926,10 +1542,26 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
           <div className="kine-cameras">
             {CAMERA_PRESETS.map((p) => <button key={p.id} className={p.id === cameraId ? 'active' : ''} onClick={() => setCameraId(p.id)} aria-label={`Camera: ${p.label} (${p.id === 'closeup' ? 'learner' : 'coach'} view)`} aria-pressed={p.id === cameraId}>{p.label}<i className={'kine-persp'}>{p.id === 'closeup' ? 'learner' : 'coach'}</i><kbd>{p.key}</kbd></button>)}
             <small className={'kine-persp-note'}>Perspective evidence: novices often learn form best from an outside (coach) view; the learner view helps timing and feel.</small>
+          </div>
+          {/* Phase 1 (Pillar 5): plane presets and joint isolation. The director
+              aligns the camera to the ACTIVE joint's local axes, so "sagittal"
+              means sagittal for the joint the learner is studying, not a fixed
+              world angle (audit A13). */}
+          <div className="kine-term" role="group" aria-label="Camera plane">
+            <span>Plane</span>
+            {PLANE_PRESETS.map((p) => <button key={p.id} type="button" className={plane === p.id ? 'active' : ''} aria-pressed={plane === p.id} onClick={() => setPlane(p.id)}>{p.label}</button>)}
+          </div>
+          <div className="kine-term" role="group" aria-label="Track a joint">
+            <span>Track joint</span>
+            <button type="button" className={!anchorJoint ? 'active' : ''} aria-pressed={!anchorJoint} onClick={() => setAnchorJoint(null)}>figure</button>
+            {ANCHOR_JOINTS.map((j) => <button key={j.id} type="button" className={anchorJoint === j.id ? 'active' : ''} aria-pressed={anchorJoint === j.id} onClick={() => setAnchorJoint(j.id)} title={`Track ${j.label}`} aria-label={`Track ${j.label}`}>{j.label}</button>)}
+            <button type="button" className="kine-tool" onClick={() => { orbitRef.current = false; directorRef.current?.reengage(); }} aria-label="Re-center the camera on the tracked joint">re-center</button>
+          </div>
           <div className="kine-term" role="group" aria-label="Representation density">
             <span>Representation</span>
             {[['3d', '3D'], ['both', '3D + data'], ['data', 'Data only']].map(([id, label]) => <button key={id} type="button" className={repMode === id ? 'active' : ''} aria-pressed={repMode === id} onClick={() => setRepMode(id)}>{label}</button>)}
           </div>
+          <div className="kine-viewbar">
             <button type="button" className={`kine-dual-toggle ${dualView && dualMode === 'rear' ? 'active' : ''}`} aria-pressed={dualView && dualMode === 'rear'} onClick={() => { setDualMode('rear'); setDualView(true); }}>Dual angle<small>rear inset</small></button>
             <button type="button" className={`kine-dual-toggle ${dualView && dualMode === 'offset' ? 'active' : ''}`} aria-pressed={dualView && dualMode === 'offset'} onClick={() => { setDualMode('offset'); setDualView(true); }}>A/B offset<small>ghost = half-cycle ahead</small></button>
             <button type="button" className={`kine-dual-toggle ${dualView && dualMode === 'top' ? 'active' : ''}`} aria-pressed={dualView && dualMode === 'top'} onClick={() => { setDualMode('top'); setDualView(true); }}>Top-down<small>transverse foot placement</small></button>
@@ -946,34 +1578,81 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         <div className="kine-block">
           <span className="eyebrow">MUSCLES AT WORK</span>
           <label className="kine-toggle"><input type="checkbox" checked={showMuscles} onChange={(e) => setShowMuscles(e.target.checked)} /> highlight activation</label>
+          {/* Pillar 3: the legend names every role so hue is never the only
+              channel; verified for deuteranopia/protanopia (audit A7). */}
+          <ul className="kine-role-key" aria-label="Muscle role colours">
+            {ROLE_ORDER.map((r) => <li key={r}><i className={`role-${r}`} aria-hidden="true" />{ROLE_NAMES[r]}</li>)}
+          </ul>
+          {/* Phase 3 (Pillar 3) level 1: persistent, non-dismissible disclaimer. */}
+          <p className="kine-disclaimer" role="note">
+            <span aria-hidden="true">ⓘ</span>
+            <span><b>Activation is a teaching approximation — not EMG output.</b> Values are relative 0–1, timings are phase-resolved approximations.
+            {' '}<a href="#kine-howto">How to read this</a></span>
+          </p>
+          {/* Intensity is encoded by LUMINANCE, not hue, so it survives colour-vision
+              deficiency; the ramp is verified in CI against the protanopia/deuteranopia
+              matrices (min pairwise ΔE 23.9 / 19.5). */}
+          <div className="kine-ramp" aria-label="Activation intensity scale">
+            <div className="kine-ramp-bar" role="img" aria-label="Activation ramp from rest to maximal, dark to bright" />
+            <span className="kine-ramp-scale"><span>0</span><span>0.5</span><span>1.0</span></span>
+            <span className="kine-ramp-note">rest → working → maximal (teaching scale)</span>
+          </div>
           <ul className="kine-legend">
             {muscleList.map((muscle) => <li key={muscle}>
               <button type="button" className={`kine-legend-row ${selected === muscle ? 'active' : ''}`} aria-pressed={selected === muscle} onClick={() => setSelected(selected === muscle ? null : muscle)}>
-                <span className="kine-legend-name" title={`${factFor(muscle)?.latin || ''} · ${factFor(muscle)?.action || ''}`}>{(factFor(muscle)?.name || muscle) + sideLabel(muscle)}<i className={`role-${roles[muscle]}`}>{ROLE_LABELS[roles[muscle]]}</i></span>
+                <span className="kine-legend-name" title={`${factFor(muscle)?.latin || ''} · ${factFor(muscle)?.action || ''}`}>{(factFor(muscle)?.name || muscle) + sideLabel(muscle)}<i className={`role-${roles[muscle]}`} title={ROLE_NAMES[roles[muscle]]}>{ROLE_NAMES[roles[muscle]] || '—'}</i></span>
                 <span className="kine-meter"><i ref={(el) => { meterRefs.current[muscle] = el; }} /></span>
               </button>
             </li>)}
           </ul>
+          <details className="kine-howto" id="kine-howto">
+            <summary>How to read this</summary>
+            <ul>
+              <li><b>0–1 is relative activation</b>, a teaching scale — not millivolts, not EMG amplitude.</li>
+              <li><b>Roles are qualitative.</b> Agonist = prime mover, synergist = assists, antagonist = opposes (often braking), stabilizer = holds a remote segment still. A role can change during a movement, and a muscle can be an agonist in one joint action and a stabilizer in another.</li>
+              <li><b>Timings are phase-resolved approximations</b>, simplified from the cited source; each muscle names its own basis in its facts card.</li>
+              <li><b>Colour never carries a meaning alone:</b> roles also differ by rim shape in the legend, and intensity is encoded by brightness, which survives colour-vision deficiency.</li>
+              <li><b>Contraction wording:</b> shortening = concentric, lengthening = eccentric, holding = isometric — measured here from the figure's own segment lengths, so it describes the pose you are watching.</li>
+            </ul>
+          </details>
           {selected && factFor(selected) && <div className="kine-facts" role="note" aria-label={`Muscle facts: ${factFor(selected).name}`}>
             <div className="kine-facts-head"><strong>{factFor(selected).name + sideLabel(selected)}</strong><button type="button" onClick={() => setSelected(null)} aria-label="Clear muscle selection">×</button></div>
             <em>{factFor(selected).latin}</em>
-            <p><b>Plane:</b> {factFor(selected).plane} · <b>Role now:</b> {ROLE_LABELS[roles[selected]] || '—'}</p>
+            <p><b>Plane:</b> {factFor(selected).plane} · <b>Role now:</b> {ROLE_NAMES[roles[selected]] || '—'}</p>
             <p><b>Origin:</b> {factFor(selected).origin}</p>
             <p><b>Insertion:</b> {factFor(selected).insertion}</p>
             <p><b>Action:</b> {factFor(selected).action}</p>
+            <p><b>Role:</b> {ROLE_NAMES[roles[selected]] || 'Inactive'} · <b>Working now:</b> <span className="kine-contraction" ref={(el) => { hudRefs.current.contraction = el; }}>—</span></p>
             {spark && <svg viewBox="0 0 150 30" className="kine-actline" role="img" aria-label="Activation timing of the selected muscle across this action">
               <path d={curvePath(spark, 150, 30, 0, 1.2)} className="kine-curve" />
             </svg>}
             {spark && <small className="kine-actline-note">Activation timing in this teaching track — windows follow published EMG timing, simplified.</small>}
+            {/* Phase 3 (Pillar 3) level 2: per-muscle provenance, straight from the
+                data record, so no number on screen is unsourced. */}
+            {evidence && <p className="kine-evidence">
+              <span className={`badge ${evidence.basis === 'EMG' ? 'measured' : 'authored'}`}>{BASIS_LABEL[evidence.basis] || evidence.basis}</span>
+              <b>Basis:</b> {evidence.citation}. {evidence.note}
+            </p>}
           </div>}
         </div>
       </aside>
     </div>
     <div className="kine-transport">
       <div className="kine-tools">
-        <button type="button" className="kine-tool" aria-label="Step one frame back" onClick={() => { const m = stateRef.current.clipsMeta?.[action.clip?.replace('.bvh', '')]; setPlaying(false); stateRef.current.time = Math.max(0, stateRef.current.time - (m ? action.duration * m.frameTime : 1 / 30)); }}>−1f</button>
-        <button type="button" className="kine-tool" aria-label="Step one frame forward" onClick={() => { const m = stateRef.current.clipsMeta?.[action.clip?.replace('.bvh', '')]; setPlaying(false); stateRef.current.time = Math.min(action.duration, stateRef.current.time + (m ? action.duration * m.frameTime : 1 / 30)); }}>+1f</button>
-        {action.id === 'walk' && <button type="button" className="kine-tool" aria-label="Snap to nearest foot contact" onClick={() => { const w = stateRef.current.clipsMeta?.walk_cmu; const cs = stateRef.current.contacts; if (w && cs) { const tt = stateRef.current.time; const near = cs.map((c) => (c / w.frames) * action.duration).reduce((a, b) => (Math.abs(b - tt) < Math.abs(a - tt) ? b : a)); stateRef.current.time = near; setPlaying(false); } }}>⤓ contact</button>}
+        <button type="button" className="kine-tool" aria-label="Step one frame back" onClick={() => { setPlaying(false); timeRef.current?.stepFrames(-1); }}>−1f</button>
+        <button type="button" className="kine-tool" aria-label="Step one frame forward" onClick={() => { setPlaying(false); timeRef.current?.stepFrames(1); }}>+1f</button>
+        <button type="button" className="kine-tool" aria-label="Step back to the previous snap point" onClick={() => { setPlaying(false); timeRef.current?.seekSnap(snapList.map((s) => s.frame), -1); }}>⤒ snap</button>
+        <button type="button" className="kine-tool" aria-label="Step forward to the next snap point" onClick={() => { setPlaying(false); timeRef.current?.seekSnap(snapList.map((s) => s.frame), 1); }}>⤓ snap</button>
+        <span className="kine-tool kine-speed-group" role="group" aria-label="Playback speed">
+          {TIME_SPEEDS.map((s) => <button key={s} type="button" className={speed === s ? 'active' : ''} aria-pressed={speed === s} onClick={() => setSpeed(s)}>{s}×</button>)}
+        </span>
+        <span className="kine-tool kine-loop-group" role="group" aria-label="Loop mode">
+          {[LOOP_ONCE, LOOP_LOOP, LOOP_PINGPONG].map((mode) => <button key={mode} type="button" className={loopMode === mode ? 'active' : ''} aria-pressed={loopMode === mode} onClick={() => setLoopMode(mode)}>{LOOP_LABELS[mode]}</button>)}
+        </span>
+        <span className="kine-tool kine-snap-group" role="group" aria-label="Jump to a named pose">
+          {snapList.map((s) => <button key={s.id} type="button" className="kine-snap" aria-label={`Jump to ${s.label}`} title={`${s.label} — frame ${s.frame + 1}`} onClick={() => { setPlaying(false); setSnapInfo({ id: s.id, label: s.label }); timeRef.current?.seekFrame(s.frame, 'snap'); }}>{s.label}</button>)}
+        </span>
+        {snapInfo.label && <small className="kine-snap-note">at {snapInfo.label}</small>}
         <label className="kine-tool-toggle"><input type="checkbox" checked={studyMode} onChange={(e) => { setStudyMode(e.target.checked); setStudyPause(null); }} /> study mode (pauses at phase boundaries)</label>
         <label className="kine-tool-toggle"><input type="checkbox" checked={rehearse} onChange={(e) => setRehearse(e.target.checked)} /> rehearsal mode (AOMI)</label>
         <label className="kine-tool-toggle"><input type="checkbox" checked={voiceOver} onChange={(e) => setVoiceOver(e.target.checked)} /> voice captions (synthetic)</label>
@@ -986,6 +1665,17 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
           {['auto', 'cinema', 'fast'].map((q) => <button key={q} type="button" className={quality === q ? 'active' : ''} aria-pressed={quality === q} onClick={() => { try { localStorage.setItem('kine-quality', q); } catch {} setQuality(q); }}>{q}</button>)}
         </span>
         {typeof sessionStorage !== 'undefined' && sessionStorage.getItem('kine-quality-note') && quality === 'fast' && <small className="kine-pace">auto-switched to fast for smoothness</small>}
+        {m1Enabled && <span className="kine-m1" role="group" aria-label="Device measurement harness">
+          <button
+            type="button"
+            className="kine-tool"
+            onClick={m1?.startedAt ? stopM1Run : startM1Run}
+            aria-label={m1?.startedAt ? 'Stop the device measurement and build the report' : 'Run a 60 second device measurement'}
+          >{m1?.startedAt ? `\u23f9 stop \u00b7 ${m1.left}s` : '\u23f1 60 s run'}</button>
+          <button type="button" className="kine-tool" onClick={() => m1ReportNow(null)} aria-label="Build the measurement report without running">\u29c9 M1 report</button>
+          {m1?.status && <small className="kine-m1-note" role="status">{m1.status}</small>}
+          {m1?.text && <textarea className="kine-m1-out" rows={3} readOnly value={m1.text} aria-label="Measurement report JSON" onFocus={(e) => e.target.select()} />}
+        </span>}
         <button type="button" className="kine-tool" onClick={() => { strokesRef.current = []; }}>clear ink</button>
         <button type="button" className="kine-tool" onClick={() => {
           const src = document.querySelector('.kine-stage canvas');
@@ -1028,16 +1718,78 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         </>}
       </div>}
       <div className="kine-scrub-wrap">
-        <input className="kine-scrub" type="range" min={0} max={1000} defaultValue={0} aria-label="Scrub timeline" onChange={(e) => { stateRef.current.time = (e.target.value / 1000) * action.duration; }} />
-        {action.id === 'walk' && <div className="kine-ticks">{Object.entries({ 0: 'Initial contact', 10: 'End loading response', 30: 'End mid-stance', 50: 'End terminal stance', 60: 'End pre-swing (toe-off)', 73: 'End initial swing', 87: 'End mid-swing', 100: 'Cycle end' }).map(([p, label]) => <button key={p} type="button" className="kine-tick" style={{ left: `${p}%` }} title={`${p}% — ${label}`} aria-label={`Jump to ${p}% of gait cycle: ${label}`} onClick={() => { stateRef.current.time = (p / 100) * action.duration; }} />)}</div>}
+        {/* Phase 1 (Pillar 2): bidirectional, frame-accurate scrub. Dragging
+            pauses the clock, seeks frame-by-frame, and resumes on release if the
+            clip was playing. The thumb is controlled by the frame index, so it
+            can never disagree with the figure (audit A2). */}
+        <input
+          className="kine-scrub"
+          type="range"
+          min={0}
+          max={1000}
+          step={1}
+          ref={scrubRef}
+          defaultValue={0}
+          aria-label="Scrub timeline"
+          aria-valuemin={1}
+          aria-valuenow={1}
+          onPointerDown={beginScrub}
+          onPointerUp={endScrub}
+          onPointerCancel={endScrub}
+          onBlur={endScrub}
+          onKeyDown={(e) => {
+            // Keyboard seeking is frame-exact and never starts a drag.
+            const step = e.shiftKey ? 5 : 1;
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+              e.preventDefault();
+              setPlaying(false);
+              timeRef.current?.stepFrames(e.key === 'ArrowLeft' ? -step : step);
+            }
+          }}
+          onChange={(e) => {
+            const t = Number(e.target.value) / 1000;
+            const tc = timeRef.current;
+            if (!tc) return;
+            const target = Math.round(t * (tc.frameCount - 1));
+            if (window.__kinePerf) { window.__kinePerf._seekMark = performance.now(); window.__kinePerf._seekTargetFrame = target; }
+            tc.seekFrame(target, 'scrub');
+          }}
+        />
+        <span className="kine-scrub-readout" ref={scrubReadoutRef} aria-hidden="true">0.00 s · f1</span>
+        {action.id === 'walk' && <div className="kine-ticks">{Object.entries({ 0: 'Initial contact', 10: 'End loading response', 30: 'End mid-stance', 50: 'End terminal stance', 60: 'End pre-swing (toe-off)', 73: 'End initial swing', 87: 'End mid-swing', 100: 'Cycle end' }).map(([p, label]) => <button key={p} type="button" className="kine-tick" style={{ left: `${p}%` }} title={`${p}% — ${label}`} aria-label={`Jump to ${p}% of gait cycle: ${label}`} onClick={() => { setPlaying(false); timeRef.current?.seekNorm(Number(p) / 100); }} />)}</div>}
       </div>
       <div className="kine-ribbon" role="group" aria-label="Gait phase timeline — click to seek">
         {action.phases.map((p, i) => { const start = i ? action.phases[i - 1].until : 0; return (
-          <button key={p.name} type="button" aria-label={`Seek to ${p.rla || p.name}`} title={`${p.rla || p.name} — seek`} style={{ width: `${(p.until - start) * 100}%` }} onClick={() => { const base = Math.floor(stateRef.current.time / action.duration) * action.duration; stateRef.current.time = base + start * action.duration + 0.001; }}>
+          <button key={p.name} type="button" aria-label={`Seek to ${p.rla || p.name}`} title={`${p.rla || p.name} — seek`} style={{ width: `${(p.until - start) * 100}%` }} onClick={() => { setPlaying(false); timeRef.current?.seekNorm(start + 0.001); }}>
             <span>{i + 1}</span>
           </button>
         ); })}
         <i className="kine-ribbon-playhead" ref={ribbonHeadRef} aria-hidden="true" />
+      </div>
+      <div className="kine-rom" aria-label="Live joint telemetry">
+        <div className="kine-rom-head">
+          <span className="eyebrow">LIVE ANGLES · SAGITTAL · {ZERO_REFERENCE.split('(')[0].trim().toUpperCase()}</span>
+          <span className="kine-rom-phase" ref={(el) => { if (el) hudRefs.current.phaseFeed = el; }} aria-live="polite">Neutral</span>
+        </div>
+        {['hip', 'knee', 'ankle'].map((j) => (
+          <div className="kine-rom-row" key={j} ref={(el) => { if (el) hudRefs.current[`${j}Row`] = el; }} data-out-of-band="false">
+            <span className="kine-rom-name">{READOUT_LABELS[j]}</span>
+            <span className="kine-rom-value" ref={(el) => { if (el) hudRefs.current[`${j}Value`] = el; }}>–</span>
+            <span className="kine-rom-arrow" ref={(el) => { if (el) hudRefs.current[`${j}Arrow`] = el; }} aria-hidden="true">■</span>
+            <span className="kine-rom-range" ref={(el) => { if (el) hudRefs.current[`${j}MinMax`] = el; }}>–</span>
+            <span className="kine-rom-joint-phase" ref={(el) => { if (el) hudRefs.current[`${j}Phase`] = el; }} />
+            <span className="kine-rom-band" title="Reference band for this movement">reference {bandLabel(j)}</span>
+          </div>
+        ))}
+        <div className="kine-rom-foot">
+          <span ref={(el) => { if (el) hudRefs.current.timeLabel = el; }}>0.00 s</span>
+          <span ref={(el) => { if (el) hudRefs.current.frameLabel = el; }}>frame 1</span>
+          <span ref={(el) => { if (el) hudRefs.current.playRate = el; }}>{speed}×</span>
+          <span className="kine-rom-source" ref={(el) => { if (el) hudRefs.current.bandSource = el; }} />
+        </div>
+        <small className="kine-rom-note">
+          Reference band: {bands.knee?.kind === 'task' ? ROM_SOURCES.gait : ROM_SOURCES.aaos}. Angles are measured between body segments, so 0° means the two segments are aligned — the anatomical zero, not the first frame of the clip. Sign conventions follow ISB recommendations ({ZERO_REFERENCE.toLowerCase()}): flexion/dorsiflexion positive. A joint that reads outside its band is flagged rather than hidden. The walking capture ships frames 0–63 (its straight, loopable part) and the jump ships frames 0–65 (its hop part); the source clips also contain a turn and a kneel that are cut, so this is a teaching clip, not a gait-lab recording. Teaching estimate, not a clinical measurement.
+        </small>
       </div>
       <p className="kine-caption" aria-live="polite"><strong>{phaseName || action.phases[0].name}.</strong> {caption}</p>
     </div>

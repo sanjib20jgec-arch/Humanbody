@@ -67,3 +67,17 @@ export function jointChannels(bvh, node, frame) {
   node.channels.forEach((ch, k) => out.push({ ch, deg: bvh.data[base + k] }));
   return out;
 }
+
+// Frame range slice (Phase 2): the motion baker ships a trimmed clip (see
+// scripts/bake-motion-assets.mjs for why the walk is frames 0-63), and the tests
+// that validate the shipped clip need the same range to stay honest.
+export function sliceBVH(bvh, from, to) {
+  const a = Math.max(0, from);
+  const b = Math.min(bvh.frames - 1, to);
+  const frames = b - a + 1;
+  return {
+    ...bvh,
+    frames,
+    data: bvh.data.slice(a * bvh.channelCount, (b + 1) * bvh.channelCount)
+  };
+}

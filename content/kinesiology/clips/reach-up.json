@@ -1,0 +1,343 @@
+{
+ "version": 1,
+ "clipId": "reach-up",
+ "label": "Reach up",
+ "source": {
+  "kind": "authored",
+  "clip": null,
+  "citation": "HBL authored teaching track"
+ },
+ "fps": 30,
+ "frameCount": 90,
+ "durationS": 3,
+ "muscles": [
+  {
+   "muscleId": "deltoid.L",
+   "role": "PM",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.3
+    ],
+    [
+     0.06461,
+     0.5125
+    ],
+    [
+     0.15169,
+     1
+    ],
+    [
+     0.26404,
+     0.9909
+    ],
+    [
+     0.30618,
+     0.7064
+    ],
+    [
+     0.39326,
+     0.3025
+    ],
+    [
+     1,
+     0.3
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 7,
+    "maxError": 0.0438
+   },
+   "peak": 1,
+   "meanActivation": 0.4632,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "deltoid.R",
+   "role": "PM",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.3
+    ],
+    [
+     0.06461,
+     0.5125
+    ],
+    [
+     0.15169,
+     1
+    ],
+    [
+     0.26404,
+     0.9909
+    ],
+    [
+     0.30618,
+     0.7064
+    ],
+    [
+     0.39326,
+     0.3025
+    ],
+    [
+     1,
+     0.3
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 7,
+    "maxError": 0.0438
+   },
+   "peak": 1,
+   "meanActivation": 0.4632,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "latissimusDorsi.L",
+   "role": "SY",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.2
+    ],
+    [
+     0.42135,
+     0.2088
+    ],
+    [
+     0.64888,
+     0.69
+    ],
+    [
+     0.84831,
+     0.2499
+    ],
+    [
+     1,
+     0.2
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 5,
+    "maxError": 0.0442
+   },
+   "peak": 0.69,
+   "meanActivation": 0.3222,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "latissimusDorsi.R",
+   "role": "SY",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.2
+    ],
+    [
+     0.42135,
+     0.2088
+    ],
+    [
+     0.64888,
+     0.69
+    ],
+    [
+     0.84831,
+     0.2499
+    ],
+    [
+     1,
+     0.2
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 5,
+    "maxError": 0.0442
+   },
+   "peak": 0.69,
+   "meanActivation": 0.3222,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "serratusAnterior.L",
+   "role": "PM",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.3
+    ],
+    [
+     0.06461,
+     0.4275
+    ],
+    [
+     0.19944,
+     0.84
+    ],
+    [
+     0.39326,
+     0.3015
+    ],
+    [
+     1,
+     0.3
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 5,
+    "maxError": 0.0295
+   },
+   "peak": 0.84,
+   "meanActivation": 0.4077,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "serratusAnterior.R",
+   "role": "PM",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.3
+    ],
+    [
+     0.06461,
+     0.4275
+    ],
+    [
+     0.19944,
+     0.84
+    ],
+    [
+     0.39326,
+     0.3015
+    ],
+    [
+     1,
+     0.3
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 5,
+    "maxError": 0.0295
+   },
+   "peak": 0.84,
+   "meanActivation": 0.4077,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "supraspinatus.L",
+   "role": "PM",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.3
+    ],
+    [
+     0.06461,
+     0.4275
+    ],
+    [
+     0.19944,
+     0.84
+    ],
+    [
+     0.39326,
+     0.3015
+    ],
+    [
+     1,
+     0.3
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 5,
+    "maxError": 0.0295
+   },
+   "peak": 0.84,
+   "meanActivation": 0.4077,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  },
+  {
+   "muscleId": "supraspinatus.R",
+   "role": "PM",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.3
+    ],
+    [
+     0.06461,
+     0.4275
+    ],
+    [
+     0.19944,
+     0.84
+    ],
+    [
+     0.39326,
+     0.3015
+    ],
+    [
+     1,
+     0.3
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 5,
+    "maxError": 0.0295
+   },
+   "peak": 0.84,
+   "meanActivation": 0.4077,
+   "evidence": {
+    "basis": "kinesiology-text",
+    "citation": "OpenStax Anatomy & Physiology (in-repo attribution) + HBL teaching curation",
+    "note": "Hand-authored teaching envelope: roles and timing follow standard texts, magnitudes are illustrative."
+   }
+  }
+ ]
+}

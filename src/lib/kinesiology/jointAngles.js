@@ -1,6 +1,27 @@
-// Phase 82: sagittal joint-angle readout (teaching convention, not ISB claims).
-// Angles are signed sagittal-plane bends, calibrated so frame 0 (quiet standing
-// in the clip) reads ~0°, which keeps curves intuitive for learners.
+// Sagittal joint-angle readout (teaching convention, not ISB claims).
+// Angles are signed sagittal-plane bends, calibrated so the clip's first frame
+// reads ~0°, which keeps curves intuitive for learners.
+//
+// Phase 1 truth fix: this module and the authored-track reader in telemetry.js
+// MUST agree. They did not — for one and the same pose (left thigh −40° about
+// X, shank +50°, foot −15°, i.e. hip flexion 40 / knee flexion 50 /
+// dorsiflexion 15 by the convention authoredTracks.js declares) the geometry
+// path reported −40 / +50 / −15 while the authored path reported +40 / +50 /
+// +15. A learner switching between a retargeted clip and an authored track saw
+// the hip invert. The sign now follows the declared convention:
+//
+//   hip flexion POSITIVE      (thigh swings toward the figure's front, +Z)
+//   knee flexion POSITIVE     (magnitude — the knee has no useful negative)
+//   ankle dorsiflexion POSITIVE (plantarflexion negative)
+//
+// The figure faces +Z (rectus abdominis sits at +z in performanceRig.js), and
+// the sign is pinned by `verify:kine-timeline` against a synthetic ground-truth
+// pose, so this cannot drift again.
+//
+// KNOWN LIMITATION (see Masterplan §9 Q11): the calibration reference is the
+// clip's own frame 0, which is "quiet standing" for the authored tracks but not
+// for every capture; the offset therefore shifts the whole curve for clips that
+// start mid-stride. Choosing a better reference is a data/SME decision.
 
 const X_AXIS = { x: 1, y: 0, z: 0 };
 
@@ -27,10 +48,13 @@ export function sampleSagittalAngles(THREE, rig, applyFrame, frame, cal, offset)
   const shank = sag(dir(rig.bones.leftLeg), rootQ, THREE);
   const foot = sag(dir(rig.bones.leftFoot), rootQ, THREE);
   const trunk = sag(new THREE.Vector3(0, -1, 0).applyQuaternion(rootQ), rootQ, THREE);
+  // signedDeg measures from the parent segment to the child segment; the
+  // convention above is defined the other way round for hip and ankle, hence
+  // the negation. The knee keeps its magnitude.
   const raw = {
-    hip: signedDeg(thigh, trunk),
+    hip: -signedDeg(thigh, trunk),
     knee: Math.abs(signedDeg(shank, thigh)),
-    ankle: signedDeg(foot, shank)
+    ankle: -signedDeg(foot, shank)
   };
   return {
     hip: raw.hip - offset.hip,
@@ -48,7 +72,9 @@ export function calibrateAngles(THREE, rig, applyFrame, frames) {
   const shank = sag(dir(rig.bones.leftLeg), rootQ, THREE);
   const foot = sag(dir(rig.bones.leftFoot), rootQ, THREE);
   const trunk = sag(new THREE.Vector3(0, -1, 0).applyQuaternion(rootQ), rootQ, THREE);
-  return { hip: signedDeg(thigh, trunk), knee: Math.abs(signedDeg(shank, thigh)), ankle: signedDeg(foot, shank) };
+  // Same convention as sampleSagittalAngles — the offsets must subtract from
+  // the same scale, or the two would cancel into nonsense.
+  return { hip: -signedDeg(thigh, trunk), knee: Math.abs(signedDeg(shank, thigh)), ankle: -signedDeg(foot, shank) };
 }
 
 // Typical sagittal ranges while walking, piecewise keypoints over %gait cycle

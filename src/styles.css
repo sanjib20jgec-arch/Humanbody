@@ -1788,11 +1788,17 @@ body.ff-tv .primary-cta, body.ff-tv .outline-button { min-height: 52px; font-siz
 .kine-legend li { display: grid; grid-template-columns: 1fr; gap: 3px; }
 .kine-legend-name { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #c9d8e8; text-transform: capitalize; }
 .kine-legend-name i { font-style: normal; font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; padding: 1px 6px; border-radius: 999px; border: 1px solid; }
-.kine-legend-name i.role-PM { color: #ffb3a6; border-color: rgba(255, 93, 71, 0.6); }
-.kine-legend-name i.role-SY { color: #ffe0b3; border-color: rgba(255, 179, 71, 0.55); }
-.kine-legend-name i.role-ST { color: #bdf3f7; border-color: rgba(77, 216, 223, 0.5); }
+/* Functional-role palette (Masterplan §4.2). Colour is redundant: every chip
+   also carries its role letter, and the legend below names each role, so the
+   encoding survives deuteranopia/protanopia where the old red/amber/cyan
+   triple did not (audit A7). */
+.kine-legend-name i.role-PM { color: #7fc4f2; border-color: rgba(0, 114, 178, 0.75); background: rgba(0, 114, 178, 0.16); }
+.kine-legend-name i.role-SY { color: #8fe3c6; border-color: rgba(0, 158, 115, 0.7); background: rgba(0, 158, 115, 0.14); }
+.kine-legend-name i.role-AN { color: #ffbe93; border-color: rgba(213, 94, 0, 0.75); background: rgba(213, 94, 0, 0.16); }
+.kine-legend-name i.role-ST { color: #e2e8f0; border-color: rgba(185, 194, 204, 0.6); background: rgba(185, 194, 204, 0.12); }
+.kine-legend-name i.role-IN { color: #9aa6b6; border-color: rgba(90, 100, 114, 0.6); background: rgba(90, 100, 114, 0.12); }
 .kine-meter { display: block; height: 5px; border-radius: 999px; background: #14263a; overflow: hidden; }
-.kine-meter i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #4dd8df, #e879f9); transition: width 90ms linear; }
+.kine-meter i { display: block; height: 100%; width: 100%; transform-origin: left center; transform: scaleX(0); background: linear-gradient(90deg, #0072b2, #009e73); }
 .kine-transport { display: grid; grid-template-columns: auto auto 1fr; gap: 12px; align-items: center; border: 1px solid #16283c; border-radius: 12px; padding: 12px 14px; background: rgba(10, 20, 34, 0.7); }
 .kine-transport .kine-caption { grid-column: 1 / -1; margin: 0; font-size: 12.5px; color: #a9bdd2; line-height: 1.55; }
 .kine-transport .kine-caption strong { color: #e879f9; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
@@ -1802,6 +1808,68 @@ body.ff-tv .primary-cta, body.ff-tv .outline-button { min-height: 52px; font-siz
 .kine-speeds button { min-height: 44px; min-width: 44px; border-radius: 9px; border: 1px solid #21374f; background: #0d1a2b; color: #c9d8e8; font: inherit; font-size: 12px; cursor: pointer; }
 .kine-speeds button.active { border-color: #4dd8df; color: #c9f6f9; }
 .kine-scrub { width: 100%; min-height: 44px; accent-color: #e879f9; }
+
+/* Phase 1 (Pillar 2): transport groups. Every control is >=44 px so the
+   masterplan's touch-target audit passes on the transport itself, not just on
+   the tool rail. */
+.kine-speed-group, .kine-loop-group, .kine-snap-group { display: inline-flex; gap: 4px; align-items: center; border: 1px solid #21374f; border-radius: 10px; padding: 2px 4px; background: rgba(13, 26, 43, 0.75); }
+.kine-speed-group button, .kine-loop-group button, .kine-snap-group button { min-height: 40px; min-width: 44px; padding: 0 8px; border: 1px solid transparent; border-radius: 8px; background: none; color: #c9d8e8; font: inherit; font-size: 11.5px; cursor: pointer; }
+.kine-speed-group button.active, .kine-loop-group button.active { border-color: #4dd8df; color: #c9f6f9; background: rgba(77, 216, 223, 0.1); }
+.kine-snap-group button { color: #cfe3f6; background: rgba(16, 32, 58, 0.7); border-color: #1c3049; }
+.kine-snap-group button:hover { border-color: #4dd8df; }
+.kine-snap-note { font-size: 10.5px; color: #8fa6bd; }
+.kine-scrub-readout { position: absolute; right: 0; top: -2px; font: 11px var(--mono, monospace); color: #8fa6bd; pointer-events: none; }
+/* Phase 1 (Pillar 3): role key. Text labels make the colour encoding redundant. */
+.kine-role-key { display: flex; flex-wrap: wrap; gap: 6px 10px; margin: 2px 0 0; padding: 0; list-style: none; font-size: 10.5px; color: #a9bdd2; }
+.kine-role-key li { display: inline-flex; align-items: center; gap: 5px; }
+.kine-role-key i { width: 10px; height: 10px; border-radius: 3px; border: 1px solid rgba(255, 255, 255, 0.25); }
+.kine-role-key i.role-PM { background: #0072b2; }
+.kine-role-key i.role-SY { background: #009e73; }
+.kine-role-key i.role-AN { background: #d55e00; }
+.kine-role-key i.role-ST { background: #b9c2cc; }
+.kine-role-key i.role-IN { background: #5a6472; }
+/* Phase 3 (Pillar 3): the activation legend is now data-backed, so it carries the
+   three-level disclaimer contract, the intensity ramp key and the per-muscle
+   provenance. All three are static DOM — they never update per frame. */
+.kine-disclaimer { display: flex; align-items: flex-start; gap: 6px; margin: 4px 0 0; padding: 6px 8px; border-radius: 8px; border: 1px solid rgba(232, 121, 249, 0.35); background: rgba(232, 121, 249, 0.08); font-size: 10.5px; line-height: 1.35; color: #e6d7f2; }
+.kine-disclaimer b { color: #f0abfc; }
+.kine-ramp { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px; margin-top: 6px; font-size: 10px; color: #a9bdd2; }
+.kine-ramp-bar { height: 10px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.22); background: linear-gradient(90deg, #440154 0%, #3b528b 25%, #21918c 50%, #5ec962 75%, #fde725 100%); }
+.kine-ramp-scale { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
+.kine-ramp-note { grid-column: 1 / -1; color: #8fa4bb; }
+.kine-evidence { margin: 6px 0 0; padding-top: 6px; border-top: 1px dashed #1d324a; font-size: 10.5px; line-height: 1.4; color: #a9bdd2; }
+.kine-evidence b { color: #cfe0f2; }
+.kine-evidence .badge { display: inline-block; padding: 1px 6px; margin-right: 4px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.22); font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase; }
+.kine-evidence .badge.measured { color: #8fe3c6; border-color: rgba(0, 158, 115, 0.7); }
+.kine-evidence .badge.authored { color: #ffd9a8; border-color: rgba(213, 154, 0, 0.7); }
+.kine-howto { margin-top: 6px; font-size: 10.5px; color: #a9bdd2; }
+.kine-howto summary { cursor: pointer; color: #cfe0f2; }
+.kine-howto ul { margin: 4px 0 0; padding-left: 16px; display: flex; flex-direction: column; gap: 3px; }
+.kine-contraction { font-variant-numeric: tabular-nums; }
+/* Phase 1 (Pillar 4): live telemetry. Numbers update at <=15 Hz; rows use a
+   left accent bar rather than a colour swap so "out of reference range" also
+   reads for a colour-blind or monochrome display. */
+.kine-rom { grid-column: 1 / -1; border: 1px solid #16283c; border-radius: 12px; padding: 10px 12px; background: rgba(10, 20, 34, 0.72); display: flex; flex-direction: column; gap: 6px; }
+.kine-rom-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.kine-rom-phase { font-size: 12px; font-weight: 700; color: #e879f9; }
+.kine-rom-row { display: grid; grid-template-columns: 44px 58px 16px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 6px; border-left: 3px solid #22384f; border-radius: 6px; background: rgba(13, 26, 43, 0.5); }
+.kine-rom-row[data-out-of-band='true'] { border-left-color: #d55e00; background: rgba(213, 94, 0, 0.1); }
+.kine-rom-row[data-out-of-band='true']::after { content: 'beyond reference'; grid-column: 4 / 6; font-size: 9.5px; letter-spacing: 0.04em; text-transform: uppercase; color: #ffbe93; }
+.kine-rom-name { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #8fa6bd; }
+.kine-rom-value { font: 700 16px var(--mono, monospace); color: #e9f3ff; }
+.kine-rom-arrow { font-size: 11px; color: #7d93ab; }
+.kine-rom-range { font: 11px var(--mono, monospace); color: #a9bdd2; }
+.kine-rom-joint-phase { font-size: 10.5px; color: #c9d8e8; }
+.kine-rom-band { font-size: 10px; color: #7d93ab; text-align: right; }
+.kine-rom-foot { display: flex; flex-wrap: wrap; gap: 10px; font: 11px var(--mono, monospace); color: #8fa6bd; }
+.kine-rom-source { color: #7d93ab; }
+.kine-rom-note { font-size: 10.5px; color: #8fa6bd; line-height: 1.5; }
+@media (max-width: 700px) {
+  .kine-rom-row { grid-template-columns: 40px 52px 14px minmax(0, 1fr); }
+  .kine-rom-band { display: none; }
+  .kine-scrub-readout { position: static; display: block; margin-top: 2px; }
+}
+@media (pointer: coarse) { .kine-speed-group button, .kine-loop-group button, .kine-snap-group button { min-height: 44px; } }
 .kine-viewbar { display: flex; gap: 8px; align-items: center; }
 .kine-viewbar button { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid #21374f; background: #0d1a2b; color: #c9d8e8; font: inherit; font-size: 12px; cursor: pointer; }
 .kine-viewbar button.active { border-color: #e879f9; color: #f5d0fe; }
@@ -1839,16 +1907,29 @@ body.ff-tv .kine-stage { min-height: 62vh; }
 /* Phase 81: terminology control, honesty panel, gait ticks */
 .kine-term { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
 .kine-term > span { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #7d93ab; }
-.kine-term button { border: 1px solid rgba(125, 147, 171, 0.4); background: none; color: #a9bdd2; border-radius: 999px; padding: 3px 10px; font-size: 10px; cursor: pointer; min-height: 28px; }
+/* Phase 1 touch-target fix: 28 px chips become 44 px targets (the chip look is
+   kept by growing the padding, not the font). */
+.kine-term button { border: 1px solid rgba(125, 147, 171, 0.4); background: none; color: #a9bdd2; border-radius: 999px; padding: 8px 12px; font-size: 10px; cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; }
 .kine-term button.active { border-color: #4dd8df; color: #c9f6f9; background: rgba(77, 216, 223, 0.1); }
 .kine-honesty { margin-top: 8px; border: 1px dashed rgba(255, 179, 71, 0.45); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #ffe0b3; }
 .kine-honesty span { color: #a9bdd2; }
 .kine-honesty em { color: #ffe0b3; }
 .kine-honesty small { color: #7d93ab; font-size: 10px; }
-.kine-scrub-wrap { position: relative; }
-.kine-ticks { position: absolute; inset: 0; pointer-events: none; }
-.kine-tick { position: absolute; top: -3px; width: 2px; height: 8px; padding: 0; border: 0; border-radius: 1px; background: rgba(77, 216, 223, 0.65); pointer-events: auto; cursor: pointer; min-height: 14px; transform: translateX(-1px); }
-.kine-tick:focus-visible { outline: 2px solid #4dd8df; outline-offset: 2px; }
+/* Phase 1 touch-target fix (Masterplan §3 audit). The eight gait ticks used to
+   be 2x8 px marks *on top of* the scrub track with a 14 px tap target. Widening
+   them in place is not an option: the hit columns would cover ~40 % of the
+   track and swallowing a drag there would kill scrubbing. So the ticks move to
+   their own 44 px ruler strip under the track, and each tick becomes a real
+   40x44 px target (40, not 44, because eight ticks on a 360 px phone sit ~41 px
+   apart; 40 keeps them side by side without overlap) while the visible mark
+   stays a 2x10 px line at the top of its column. */
+.kine-scrub-wrap { position: relative; padding-bottom: 44px; }
+.kine-ticks { position: absolute; left: 0; right: 0; bottom: 0; height: 44px; pointer-events: none; border-bottom: 1px solid rgba(39, 64, 92, 0.7); }
+.kine-tick { position: absolute; top: 0; width: 40px; height: 44px; padding: 0; border: 0; background: none; pointer-events: auto; cursor: pointer; transform: translateX(-50%); }
+.kine-tick::after { content: ''; position: absolute; left: 50%; top: 0; width: 2px; height: 10px; margin-left: -1px; border-radius: 1px; background: rgba(77, 216, 223, 0.65); }
+.kine-tick:hover::after, .kine-tick:focus-visible::after { background: #4dd8df; height: 14px; }
+.kine-tick:focus-visible { outline: 2px solid #4dd8df; outline-offset: -2px; }
+@media (max-width: 640px) { .kine-scrub-wrap { padding-bottom: 40px; } .kine-ticks { height: 40px; } .kine-tick { height: 40px; } }
 
 /* Phase 82: joint angle readout */
 .kine-angles { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
@@ -1911,6 +1992,17 @@ body.ff-tv .kine-stage { min-height: 62vh; }
 
 /* Phase 92 */
 .kine-pace { color: #7d93ab; font-size: 10px; }
+
+/* M1 device-measurement harness (DEV, or ?m1=1 on a production preview).
+   Hidden from the normal UI; the two buttons reuse .kine-tool so the 44 px
+   touch-target contract is inherited rather than restated. */
+.kine-m1 { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.kine-m1-note { opacity: 0.75; font-size: 11.5px; }
+.kine-m1-out {
+  flex: 1 1 100%; min-height: 44px; max-height: 96px; margin: 0; padding: 6px 8px;
+  font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical;
+  color: inherit; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 8px;
+}
 
 /* Phase 117 (R8): responsive + perceived-performance polish for Movement Theater */
 .kine-persp-note { grid-column: 1 / -1; min-width: 0; }
@@ -1980,6 +2072,7 @@ body.ff-tv .kine-stage { min-height: 62vh; }
 
 /* Phase 105 */
 .kine-ribbon { position: relative; display: flex; gap: 3px; margin: 8px 0 2px; height: 22px; }
+.kine-transport > .kine-ribbon { grid-column: 1 / -1; }
 .kine-ribbon button { position: relative; border: 1px solid #1c3049; background: linear-gradient(180deg, #10203a, #0b1524); border-radius: 6px; color: #7d93ab; font-size: 10px; cursor: pointer; }
 .kine-ribbon button:hover { border-color: #4dd8df; }
 .kine-ribbon-playhead { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #ffe0b3; border-radius: 1px; pointer-events: none; }

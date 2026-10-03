@@ -1,0 +1,1035 @@
+{
+ "version": 1,
+ "clipId": "jump",
+ "label": "Jump (mocap)",
+ "source": {
+  "kind": "mocap",
+  "clip": "jump_cmu.bvh",
+  "citation": "CMU Graphics Lab Motion Capture Database (see vendor/kinesiology/PROVENANCE.json)"
+ },
+ "fps": 30,
+ "frameCount": 66,
+ "durationS": 2.2,
+ "muscles": [
+  {
+   "muscleId": "deltoid.L",
+   "role": "SY",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.40769,
+     0.0051
+    ],
+    [
+     0.56154,
+     0.8998
+    ],
+    [
+     0.70769,
+     0.0131
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 5,
+    "maxError": 0.0416
+   },
+   "peak": 0.8998,
+   "meanActivation": 0.1434,
+   "evidence": {
+    "basis": "authored-teaching",
+    "citation": "HBL teaching curation (the shipped motion capture carries no EMG channel)",
+    "note": "Hand-timed teaching envelope for an upper-body/trunk muscle during a lower-body capture."
+   }
+  },
+  {
+   "muscleId": "deltoid.R",
+   "role": "SY",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.40769,
+     0.0051
+    ],
+    [
+     0.56154,
+     0.8998
+    ],
+    [
+     0.70769,
+     0.0131
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 5,
+    "maxError": 0.0416
+   },
+   "peak": 0.8998,
+   "meanActivation": 0.1434,
+   "evidence": {
+    "basis": "authored-teaching",
+    "citation": "HBL teaching curation (the shipped motion capture carries no EMG channel)",
+    "note": "Hand-timed teaching envelope for an upper-body/trunk muscle during a lower-body capture."
+   }
+  },
+  {
+   "muscleId": "erectorSpinae",
+   "role": "ST",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.4
+    ],
+    [
+     1,
+     0.4
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 2,
+    "maxError": 0
+   },
+   "peak": 0.4,
+   "meanActivation": 0.4,
+   "evidence": {
+    "basis": "EMG",
+    "citation": "Perry & Burnfield (2010), Gait Analysis: Normal and Pathological Function — gait muscle timing figures",
+    "note": "Timing windows simplified to a teaching envelope; magnitudes are relative, not EMG amplitudes."
+   }
+  },
+  {
+   "muscleId": "gastrocnemius.L",
+   "role": "PM",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.35385,
+     0.0036
+    ],
+    [
+     0.45,
+     1
+    ],
+    [
+     0.54615,
+     0.0036
+    ],
+    [
+     0.73462,
+     0.0354
+    ],
+    [
+     0.77308,
+     0.3958
+    ],
+    [
+     0.83462,
+     0.9
+    ],
+    [
+     0.89231,
+     0.4524
+    ],
+    [
+     0.92692,
+     0.0865
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 10,
+    "maxError": 0.049
+   },
+   "peak": 1,
+   "meanActivation": 0.2027,
+   "evidence": {
+    "basis": "EMG",
+    "citation": "Perry & Burnfield (2010), Gait Analysis: Normal and Pathological Function — gait muscle timing figures",
+    "note": "Timing windows simplified to a teaching envelope; magnitudes are relative, not EMG amplitudes."
+   }
+  },
+  {
+   "muscleId": "gastrocnemius.R",
+   "role": "PM",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.35385,
+     0.0036
+    ],
+    [
+     0.45,
+     1
+    ],
+    [
+     0.54615,
+     0.0036
+    ],
+    [
+     0.73462,
+     0.0354
+    ],
+    [
+     0.77308,
+     0.3958
+    ],
+    [
+     0.83462,
+     0.9
+    ],
+    [
+     0.89231,
+     0.4524
+    ],
+    [
+     0.92692,
+     0.0865
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 10,
+    "maxError": 0.049
+   },
+   "peak": 1,
+   "meanActivation": 0.2027,
+   "evidence": {
+    "basis": "EMG",
+    "citation": "Perry & Burnfield (2010), Gait Analysis: Normal and Pathological Function — gait muscle timing figures",
+    "note": "Timing windows simplified to a teaching envelope; magnitudes are relative, not EMG amplitudes."
+   }
+  },
+  {
+   "muscleId": "gluteusMaximus.L",
+   "role": "PM",
+   "contraction": "eccentric",
+   "contractionKeys": [
+    [
+     0.10769,
+     "concentric"
+    ],
+    [
+     0.30769,
+     "eccentric"
+    ],
+    [
+     0.44615,
+     "concentric"
+    ],
+    [
+     0.66154,
+     "eccentric"
+    ],
+    [
+     0.87692,
+     "isometric"
+    ],
+    [
+     1,
+     "eccentric"
+    ]
+   ],
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.08846,
+     0.0973
+    ],
+    [
+     0.13846,
+     0.4323
+    ],
+    [
+     0.22308,
+     0.8497
+    ],
+    [
+     0.3,
+     0.5196
+    ],
+    [
+     0.35,
+     0.16
+    ],
+    [
+     0.41923,
+     0
+    ],
+    [
+     0.48462,
+     0.9999
+    ],
+    [
+     0.55,
+     0
+    ],
+    [
+     0.73462,
+     0.0354
+    ],
+    [
+     0.77308,
+     0.3958
+    ],
+    [
+     0.83462,
+     0.9
+    ],
+    [
+     0.89231,
+     0.4524
+    ],
+    [
+     0.92692,
+     0.0865
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 15,
+    "maxError": 0.049
+   },
+   "peak": 0.9999,
+   "meanActivation": 0.316,
+   "evidence": {
+    "basis": "EMG",
+    "citation": "Perry & Burnfield (2010), Gait Analysis: Normal and Pathological Function — gait muscle timing figures",
+    "note": "Timing windows simplified to a teaching envelope; magnitudes are relative, not EMG amplitudes."
+   }
+  },
+  {
+   "muscleId": "gluteusMaximus.R",
+   "role": "PM",
+   "contraction": "eccentric",
+   "contractionKeys": [
+    [
+     0.10769,
+     "concentric"
+    ],
+    [
+     0.30769,
+     "eccentric"
+    ],
+    [
+     0.44615,
+     "concentric"
+    ],
+    [
+     0.66154,
+     "eccentric"
+    ],
+    [
+     0.87692,
+     "isometric"
+    ],
+    [
+     1,
+     "eccentric"
+    ]
+   ],
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.08846,
+     0.0973
+    ],
+    [
+     0.13846,
+     0.4323
+    ],
+    [
+     0.22308,
+     0.8497
+    ],
+    [
+     0.3,
+     0.5196
+    ],
+    [
+     0.35,
+     0.16
+    ],
+    [
+     0.41923,
+     0
+    ],
+    [
+     0.48462,
+     0.9999
+    ],
+    [
+     0.55,
+     0
+    ],
+    [
+     0.73462,
+     0.0354
+    ],
+    [
+     0.77308,
+     0.3958
+    ],
+    [
+     0.83462,
+     0.9
+    ],
+    [
+     0.89231,
+     0.4524
+    ],
+    [
+     0.92692,
+     0.0865
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 15,
+    "maxError": 0.049
+   },
+   "peak": 0.9999,
+   "meanActivation": 0.316,
+   "evidence": {
+    "basis": "EMG",
+    "citation": "Perry & Burnfield (2010), Gait Analysis: Normal and Pathological Function — gait muscle timing figures",
+    "note": "Timing windows simplified to a teaching envelope; magnitudes are relative, not EMG amplitudes."
+   }
+  },
+  {
+   "muscleId": "hamstrings.L",
+   "role": "SY",
+   "contraction": "mixed",
+   "contractionKeys": [
+    [
+     0.47692,
+     "mixed"
+    ],
+    [
+     0.66154,
+     "eccentric"
+    ],
+    [
+     0.78462,
+     "mixed"
+    ]
+   ],
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.08846,
+     0.0721
+    ],
+    [
+     0.22308,
+     0.6298
+    ],
+    [
+     0.35,
+     0.1186
+    ],
+    [
+     0.41923,
+     0
+    ],
+    [
+     0.48462,
+     0.6999
+    ],
+    [
+     0.55,
+     0
+    ],
+    [
+     0.73462,
+     0.0248
+    ],
+    [
+     0.83462,
+     0.63
+    ],
+    [
+     0.89231,
+     0.3167
+    ],
+    [
+     0.92692,
+     0.0605
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 12,
+    "maxError": 0.0489
+   },
+   "peak": 0.6999,
+   "meanActivation": 0.2273,
+   "evidence": {
+    "basis": "EMG",
+    "citation": "Perry & Burnfield (2010), Gait Analysis: Normal and Pathological Function — gait muscle timing figures",
+    "note": "Timing windows simplified to a teaching envelope; magnitudes are relative, not EMG amplitudes."
+   }
+  },
+  {
+   "muscleId": "hamstrings.R",
+   "role": "SY",
+   "contraction": "mixed",
+   "contractionKeys": [
+    [
+     0.47692,
+     "mixed"
+    ],
+    [
+     0.66154,
+     "eccentric"
+    ],
+    [
+     0.78462,
+     "mixed"
+    ]
+   ],
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.08846,
+     0.0721
+    ],
+    [
+     0.22308,
+     0.6298
+    ],
+    [
+     0.35,
+     0.1186
+    ],
+    [
+     0.41923,
+     0
+    ],
+    [
+     0.48462,
+     0.6999
+    ],
+    [
+     0.55,
+     0
+    ],
+    [
+     0.73462,
+     0.0248
+    ],
+    [
+     0.83462,
+     0.63
+    ],
+    [
+     0.89231,
+     0.3167
+    ],
+    [
+     0.92692,
+     0.0605
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 12,
+    "maxError": 0.0489
+   },
+   "peak": 0.6999,
+   "meanActivation": 0.2273,
+   "evidence": {
+    "basis": "EMG",
+    "citation": "Perry & Burnfield (2010), Gait Analysis: Normal and Pathological Function — gait muscle timing figures",
+    "note": "Timing windows simplified to a teaching envelope; magnitudes are relative, not EMG amplitudes."
+   }
+  },
+  {
+   "muscleId": "quadriceps.L",
+   "role": "PM",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.05769,
+     0.0043
+    ],
+    [
+     0.08846,
+     0.1031
+    ],
+    [
+     0.13846,
+     0.4578
+    ],
+    [
+     0.22308,
+     0.8997
+    ],
+    [
+     0.3,
+     0.5501
+    ],
+    [
+     0.35,
+     0.1694
+    ],
+    [
+     0.41923,
+     0
+    ],
+    [
+     0.48462,
+     0.9999
+    ],
+    [
+     0.55,
+     0
+    ],
+    [
+     0.73462,
+     0.0374
+    ],
+    [
+     0.77308,
+     0.4177
+    ],
+    [
+     0.83462,
+     0.95
+    ],
+    [
+     0.89231,
+     0.4775
+    ],
+    [
+     0.92692,
+     0.0913
+    ],
+    [
+     0.94615,
+     0.0026
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 17,
+    "maxError": 0.037
+   },
+   "peak": 0.9999,
+   "meanActivation": 0.3305,
+   "evidence": {
+    "basis": "EMG",
+    "citation": "Perry & Burnfield (2010), Gait Analysis: Normal and Pathological Function — gait muscle timing figures",
+    "note": "Timing windows simplified to a teaching envelope; magnitudes are relative, not EMG amplitudes."
+   }
+  },
+  {
+   "muscleId": "quadriceps.R",
+   "role": "PM",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.05769,
+     0.0043
+    ],
+    [
+     0.08846,
+     0.1031
+    ],
+    [
+     0.13846,
+     0.4578
+    ],
+    [
+     0.22308,
+     0.8997
+    ],
+    [
+     0.3,
+     0.5501
+    ],
+    [
+     0.35,
+     0.1694
+    ],
+    [
+     0.41923,
+     0
+    ],
+    [
+     0.48462,
+     0.9999
+    ],
+    [
+     0.55,
+     0
+    ],
+    [
+     0.73462,
+     0.0374
+    ],
+    [
+     0.77308,
+     0.4177
+    ],
+    [
+     0.83462,
+     0.95
+    ],
+    [
+     0.89231,
+     0.4775
+    ],
+    [
+     0.92692,
+     0.0913
+    ],
+    [
+     0.94615,
+     0.0026
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 17,
+    "maxError": 0.037
+   },
+   "peak": 0.9999,
+   "meanActivation": 0.3305,
+   "evidence": {
+    "basis": "EMG",
+    "citation": "Perry & Burnfield (2010), Gait Analysis: Normal and Pathological Function — gait muscle timing figures",
+    "note": "Timing windows simplified to a teaching envelope; magnitudes are relative, not EMG amplitudes."
+   }
+  },
+  {
+   "muscleId": "rectusAbdominis",
+   "role": "ST",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0.25
+    ],
+    [
+     0.32692,
+     0.2727
+    ],
+    [
+     0.51154,
+     1
+    ],
+    [
+     0.58846,
+     1
+    ],
+    [
+     0.62308,
+     0.8929
+    ],
+    [
+     0.76923,
+     0.2795
+    ],
+    [
+     1,
+     0.25
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 7,
+    "maxError": 0.0433
+   },
+   "peak": 1,
+   "meanActivation": 0.4466,
+   "evidence": {
+    "basis": "EMG",
+    "citation": "Perry & Burnfield (2010), Gait Analysis: Normal and Pathological Function — gait muscle timing figures",
+    "note": "Timing windows simplified to a teaching envelope; magnitudes are relative, not EMG amplitudes."
+   }
+  },
+  {
+   "muscleId": "soleus.L",
+   "role": "SY",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.35385,
+     0.0033
+    ],
+    [
+     0.45,
+     0.9
+    ],
+    [
+     0.54615,
+     0.0033
+    ],
+    [
+     0.73462,
+     0.0334
+    ],
+    [
+     0.77308,
+     0.3738
+    ],
+    [
+     0.83462,
+     0.85
+    ],
+    [
+     0.89231,
+     0.4272
+    ],
+    [
+     0.92692,
+     0.0817
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 10,
+    "maxError": 0.0463
+   },
+   "peak": 0.9,
+   "meanActivation": 0.187,
+   "evidence": {
+    "basis": "EMG",
+    "citation": "Perry & Burnfield (2010), Gait Analysis: Normal and Pathological Function — gait muscle timing figures",
+    "note": "Timing windows simplified to a teaching envelope; magnitudes are relative, not EMG amplitudes."
+   }
+  },
+  {
+   "muscleId": "soleus.R",
+   "role": "SY",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.35385,
+     0.0033
+    ],
+    [
+     0.45,
+     0.9
+    ],
+    [
+     0.54615,
+     0.0033
+    ],
+    [
+     0.73462,
+     0.0334
+    ],
+    [
+     0.77308,
+     0.3738
+    ],
+    [
+     0.83462,
+     0.85
+    ],
+    [
+     0.89231,
+     0.4272
+    ],
+    [
+     0.92692,
+     0.0817
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 10,
+    "maxError": 0.0463
+   },
+   "peak": 0.9,
+   "meanActivation": 0.187,
+   "evidence": {
+    "basis": "EMG",
+    "citation": "Perry & Burnfield (2010), Gait Analysis: Normal and Pathological Function — gait muscle timing figures",
+    "note": "Timing windows simplified to a teaching envelope; magnitudes are relative, not EMG amplitudes."
+   }
+  },
+  {
+   "muscleId": "tibialisAnterior.L",
+   "role": "SY",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.72308,
+     0.0011
+    ],
+    [
+     0.83462,
+     0.6
+    ],
+    [
+     0.89231,
+     0.3016
+    ],
+    [
+     0.92692,
+     0.0577
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 6,
+    "maxError": 0.0327
+   },
+   "peak": 0.6,
+   "meanActivation": 0.0687,
+   "evidence": {
+    "basis": "EMG",
+    "citation": "Perry & Burnfield (2010), Gait Analysis: Normal and Pathological Function — gait muscle timing figures",
+    "note": "Timing windows simplified to a teaching envelope; magnitudes are relative, not EMG amplitudes."
+   }
+  },
+  {
+   "muscleId": "tibialisAnterior.R",
+   "role": "SY",
+   "contraction": "mixed",
+   "activation": [
+    [
+     0,
+     0
+    ],
+    [
+     0.72308,
+     0.0011
+    ],
+    [
+     0.83462,
+     0.6
+    ],
+    [
+     0.89231,
+     0.3016
+    ],
+    [
+     0.92692,
+     0.0577
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "interpolation": "monotoneCubic",
+   "quality": {
+    "keys": 6,
+    "maxError": 0.0327
+   },
+   "peak": 0.6,
+   "meanActivation": 0.0687,
+   "evidence": {
+    "basis": "EMG",
+    "citation": "Perry & Burnfield (2010), Gait Analysis: Normal and Pathological Function — gait muscle timing figures",
+    "note": "Timing windows simplified to a teaching envelope; magnitudes are relative, not EMG amplitudes."
+   }
+  }
+ ]
+}
