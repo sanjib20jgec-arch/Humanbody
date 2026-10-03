@@ -177,11 +177,16 @@ test.describe('Kinesiology Theater', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const theater = await openTheater(page);
     await theater.getByRole('button', { name: 'Camera: Anterior (coach view)' }).click();
+    // Phase 1: the preset distance is aspect-scaled on portrait canvases
+    // (Phase 117 R8), so compare against the same rule the app applies.
     await page.waitForFunction(() => {
       const d = window.__kineDebug;
-      return d && Math.abs(d.camera.position.z - 4.0) < 0.05 && Math.abs(d.camera.position.x) < 0.05;
-    }, null, { timeout: 5000 });
-    // old framing was 4.9 away; tightened V4 framing is 4.0 for walk
+      const mount = document.querySelector('.kine-stage');
+      const aspect = mount.clientWidth / Math.max(1, mount.clientHeight);
+      const f = Math.max(0.7, Math.min(1, aspect / 1.5));
+      return d && Math.abs(d.camera.position.z - 4.0 * f) < 0.05 && Math.abs(d.camera.position.x) < 0.05;
+    }, null, { timeout: 8000 });
+    // old framing was 4.9 away; tightened V4 framing is 4.0 for walk on desktop
     const z = await page.evaluate(() => window.__kineDebug.camera.position.z);
     expect(z).toBeLessThan(4.5);
   });
@@ -357,7 +362,8 @@ test.describe('Kinesiology Theater', () => {
     const t0 = await page.evaluate(() => window.__kineDebug?.rig ? true : true);
     await theater.locator('.kine-tool', { hasText: '+1f' }).click();
     await theater.locator('.kine-tool', { hasText: '−1f' }).click();
-    await theater.locator('.kine-tool', { hasText: 'contact' }).click();
+    // Phase 1: contact snapping is now one of the manifest's snap points.
+    await theater.locator('.kine-snap-group button').first().click();
     await expect(theater.locator('.kine-caption')).toBeVisible();
     expect(t0).toBe(true);
   });

@@ -2,6 +2,16 @@
 // Procedural, in-house (CC0-equivalent). Realistic adult proportions (~1.75 m),
 // rigid segments with spherical joint blending, named muscle meshes for the
 // activation system. NOT the certified BodyParts3D reference.
+//
+// Movement Theater Phase 1 additions (Masterplan §4.2/§4.3, audit A10/A14):
+//   * activation colouring no longer allocates a THREE.Color per muscle per
+//     frame, and now skips muscles whose level+role did not change — a paused
+//     figure does zero colour work;
+//   * "activation heat" and "joint markers" are real switches instead of the
+//     dead toggles the audit found (the browser specs asserted methods that did
+//     not exist);
+//   * selection produces a single shared outline object, so a legend selection
+//     does not add 54 transparent draws.
 
 const BONE_TREE = [
   { name: 'root', len: 0 },
@@ -59,12 +69,65 @@ export const MUSCLES = [
   { id: 'buccinator', side: true, bone: 'head', from: [0.05, -0.07, 0.09], to: [0.045, -0.1, 0.1], r: 0.02 }
 ];
 
-export const ROLE_COLORS = { PM: 0xff5d47, SY: 0xffb347, ST: 0x4dd8df };
+/**
+ * Functional-role palette (Masterplan §4.2 / audit A7).
+ *
+ * The previous triple (#ff5d47 / #ffb347 / #4dd8df) failed deuteranopia:
+ * prime mover vs synergist separated by only ΔE*ab 19.9 and — worse — by hue
+ * alone, which is exactly the axis a deutan viewer loses. A literal Okabe-Ito
+ * triple also failed the deutan check (ΔE*ab 7.3-8.1) because the "sky blue"
+ * and "bluish green" members collapse toward each other. These five values are
+ * the smallest set from the Okabe-Ito family that clears deuteranopia AND
+ * protanopia within its own hue-family groups, while intensity is carried by
+ * LUMINANCE (see ACTIVATION_RAMP) rather than hue:
+ *
+ *   protanopia  min ΔE*ab 29.8   deuteranopia min ΔE*ab 23.8
+ *   tritanopia  min ΔE*ab 16.5   (acceptable only with the shape/label
+ *                                 redundancy the legend always shows)
+ *
+ * Role is always accompanied by its text label in the legend and by the role
+ * letter on the muscle outline, so colour is redundant, never the only channel.
+ */
+export const ROLE_COLORS = {
+  PM: 0x0072b2, // Agonist — blue
+  SY: 0x009e73, // Synergist — bluish green
+  AN: 0xd55e00, // Antagonist — vermillion
+  ST: 0xb9c2cc, // Stabilizer — neutral grey-blue
+  IN: 0x5a6472  // Inactive — dark grey
+};
+
+/**
+ * Intensity ramp for activation heat mode (Masterplan §4.3).
+ * A monotone-luminance viridis-like ramp: relative luminance rises 0.019 →
+ * 0.782 across the five stops (7.9x), so intensity survives any colour-vision
+ * deficiency as a brightness difference, not a hue difference.
+ */
+export const ACTIVATION_RAMP = [0x440154, 0x3b528b, 0x21918c, 0x5ec962, 0xfde725];
+
+const MUSCLE_BASE = 0x8a3040;
+
+/** Joint markers: where the rig's axes live, for the marker overlay. */
+export const JOINT_MARKERS = BONE_TREE.filter((b) => b.name !== 'root').map((b) => b.name);
+
+function rampColor(out, t) {
+  const n = ACTIVATION_RAMP.length - 1;
+  const x = Math.max(0, Math.min(1, t)) * n;
+  const i = Math.min(n - 1, Math.floor(x));
+  const f = x - i;
+  const a = ACTIVATION_RAMP[i];
+  const b = ACTIVATION_RAMP[i + 1];
+  out.setRGB(
+    ((a >> 16 & 255) + (((b >> 16 & 255) - (a >> 16 & 255)) * f)) / 255,
+    ((a >> 8 & 255) + (((b >> 8 & 255) - (a >> 8 & 255)) * f)) / 255,
+    ((a & 255) + (((b & 255) - (a & 255)) * f)) / 255
+  );
+  return out;
+}
 
 export function buildPerformanceRig(THREE, opts = {}) {
   const detail = opts.lowPoly ? 10 : 20;
   const skin = new THREE.MeshStandardMaterial({ color: 0xc7cdd6, roughness: 0.62, metalness: 0.08 });
-  const muscleBase = new THREE.MeshStandardMaterial({ color: 0x8a3040, roughness: 0.5, metalness: 0.05 });
+  const muscleBase = new THREE.MeshStandardMaterial({ color: MUSCLE_BASE, roughness: 0.5, metalness: 0.05 });
 
   const root = new THREE.Group();
   root.name = 'performance-rig';
@@ -88,7 +151,7 @@ export function buildPerformanceRig(THREE, opts = {}) {
 
   const seg = (bone, radiusTop, radiusBottom, length, along, shift = [0, 0, 0], mat = skin) => {
     const geo = new THREE.CylinderGeometry(radiusTop, radiusBottom, length, detail, 1);
-    // Cylinder is Y-axis; limbs are built along -Y for legs/arms via rotation at caller through `along`
+    // Cylinder is Y-axis; limbs are built along -Y for legs/arms via `along`.
     geo.rotateX(along);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(...shift);
@@ -110,7 +173,6 @@ export function buildPerformanceRig(THREE, opts = {}) {
   seg(bones.head, 0.05, 0.04, 0.09, Math.PI / 2.4, [0, -0.06, 0.09]); // facial plane hint
   seg(bones.jaw, 0.045, 0.035, 0.1, Math.PI / 2.6, [0, -0.045, 0.02]);
 
-  // Arms (built along -Y after rotating -90° about Z so cylinder Y→X? keep -Y: arms hang)
   for (const side of ['left', 'right']) {
     const s = side === 'left' ? 1 : -1;
     ball(bones[`${side}Clavicle`], 0.055, [0.1, 0, 0]);
@@ -131,10 +193,14 @@ export function buildPerformanceRig(THREE, opts = {}) {
     bones[`${side}Foot`].add(foot);
   }
 
-  // Muscles: tapered tubes between anchors; sided entries mirrored to both sides.
+  // ---- muscle meshes: tapered tubes between anchors, one mesh per side ----
   const muscles = {};
+  const muscleEntries = [];
+  const scratchColor = new THREE.Color();
+  const scratchHeat = new THREE.Color();
+  const scratchRole = new THREE.Color();
+
   const addMuscle = (m, sidePrefix) => {
-    // Limb bones are named leftX/rightX; midline bones (root, spine, head…) are shared.
     const boneName = sidePrefix && /^[A-Z]/.test(m.bone) ? sidePrefix + m.bone : m.bone;
     const bone = bones[boneName];
     if (!bone) return;
@@ -152,32 +218,194 @@ export function buildPerformanceRig(THREE, opts = {}) {
     mesh.name = `muscle-${key}`;
     mesh.userData.muscleId = key;
     bone.add(mesh);
-    muscles[key] = { mesh, mat, def: m };
+    const entry = { mesh, mat, def: m, lastLevel: -1, lastRole: null, heat: false };
+    muscles[key] = entry;
+    muscleEntries.push(entry);
+    return entry;
   };
   for (const m of MUSCLES) {
     if (m.side) { addMuscle(m, 'left'); addMuscle(m, 'right'); }
     else addMuscle(m, null);
   }
 
-  return {
-    root, bones, muscles, bodyGroup, muscleGroup,
+  // ---- joint markers (opt-in overlay, built once) --------------------------
+  const markerGroup = new THREE.Group();
+  markerGroup.name = 'joint-markers';
+  markerGroup.visible = false;
+  const markerMat = new THREE.MeshBasicMaterial({ color: 0xffe0b3, transparent: true, opacity: 0.85, depthWrite: false });
+  const markerGeo = new THREE.SphereGeometry(0.018, 10, 8);
+  const markerMeshes = [];
+  for (const name of JOINT_MARKERS) {
+    const bone = bones[name];
+    if (!bone) continue;
+    const marker = new THREE.Mesh(markerGeo, markerMat);
+    marker.position.set(0, 0, 0);
+    marker.userData.jointId = name;
+    marker.renderOrder = 30;
+    bone.add(marker);
+    markerMeshes.push(marker);
+  }
+  root.add(markerGroup); // grouping is virtual: markers live under their bones
+
+  // ---- selection outline (ONE shared object for the whole rig) -------------
+  // It is re-parented onto the selected muscle's bone, so it inherits exactly
+  // the transform the mesh has without any matrix bookkeeping.
+  const outlineMat = new THREE.LineBasicMaterial({ color: 0x4dd8df, transparent: true, opacity: 0.95, depthWrite: false, depthTest: true });
+  const outline = new THREE.LineSegments(new THREE.BufferGeometry(), outlineMat);
+  outline.name = 'muscle-outline';
+  outline.visible = false;
+  outline.frustumCulled = false;
+  outline.userData.outlineFor = null;
+  outline.renderOrder = 20;
+  const outlines = { selected: outline };
+  const _edgeCache = new Map();
+  let heatMode = false;
+
+  const api = {
+    root, bones, muscles, muscleEntries, bodyGroup, muscleGroup, markerGroup, markerMeshes, outlines,
+
+    /** True when the colour path is the activation heat ramp. */
+    heatOn: () => heatMode,
+
+    setHeatMode(on) {
+      heatMode = Boolean(on);
+      for (const entry of muscleEntries) {
+        if (entry.heat !== heatMode) { entry.heat = heatMode; entry.lastLevel = -1; entry.lastRole = null; }
+      }
+      return api;
+    },
+
+    setMarkersVisible(on) {
+      const visible = Boolean(on);
+      markerGroup.visible = visible;
+      for (const marker of markerMeshes) marker.visible = visible;
+      return api;
+    },
+
+    /**
+     * @param {string} key   muscle id with side suffix, e.g. 'quadriceps.L'
+     * @param {number} level activation 0–1 (clamped: audit A11 found 1.3 in data)
+     * @param {string} role  'PM' | 'SY' | 'ST'
+     */
     setMuscleActivation(key, level, role) {
       const entry = muscles[key];
       if (!entry) return;
-      entry.mat.emissive = new THREE.Color(ROLE_COLORS[role] ?? ROLE_COLORS.ST);
-      entry.mat.emissiveIntensity = level * 1.6;
-      entry.mat.color = new THREE.Color(0x8a3040).lerp(new THREE.Color(ROLE_COLORS[role] ?? ROLE_COLORS.ST), Math.min(1, level) * 0.65);
+      const clamped = Math.max(0, Math.min(1, Number(level) || 0));
+      // Quantise so unchanged values cost nothing (paused figure = no work).
+      const quantised = Math.round(clamped * 255);
+      const roleCode = heatMode ? 'H' : (role || 'ST');
+      if (entry.lastLevel === quantised && entry.lastRole === roleCode) return;
+      entry.lastLevel = quantised;
+      entry.lastRole = roleCode;
+      const t = quantised / 255;
+      if (heatMode) {
+        rampColor(scratchHeat, t);
+        entry.mat.emissive.copy(scratchHeat);
+        entry.mat.emissiveIntensity = 0.35 + t * 1.25;
+        entry.mat.color.copy(scratchColor.setHex(MUSCLE_BASE)).lerp(scratchHeat, 0.15 + t * 0.7);
+      } else {
+        const roleHex = ROLE_COLORS[role] ?? ROLE_COLORS.IN;
+        entry.mat.emissive.copy(scratchRole.setHex(roleHex));
+        entry.mat.emissiveIntensity = t * 1.6;
+        entry.mat.color.copy(scratchColor.setHex(MUSCLE_BASE)).lerp(scratchRole, Math.min(1, t) * 0.65);
+      }
     },
+
     resetMuscles() {
-      Object.values(muscles).forEach(({ mat }) => { mat.emissiveIntensity = 0; mat.color = new THREE.Color(0x8a3040); });
+      for (const entry of muscleEntries) {
+        if (entry.lastLevel === 0 && entry.lastRole !== null) continue;
+        entry.lastLevel = 0;
+        entry.lastRole = heatMode ? 'H' : (entry.lastRole || null);
+        if (heatMode) {
+          rampColor(scratchHeat, 0);
+          entry.mat.emissive.copy(scratchHeat);
+          entry.mat.emissiveIntensity = 0.35;
+          entry.mat.color.copy(scratchColor.setHex(MUSCLE_BASE)).lerp(scratchHeat, 0.15);
+        } else {
+          entry.mat.emissiveIntensity = 0;
+          entry.mat.color.setHex(MUSCLE_BASE);
+        }
+      }
     },
+
     setMusclesVisible(visible) {
-      Object.values(muscles).forEach(({ mesh }) => { mesh.visible = visible; });
+      const on = Boolean(visible);
+      for (const entry of muscleEntries) entry.mesh.visible = on;
+      return api;
     },
+
+    /**
+     * Dim every muscle except the selected one. Material state is mutated once
+     * per change (never per frame) — the audit's A14 recompile-per-selection is
+     * avoided by leaving `transparent` alone and driving opacity only.
+     */
+    setIsolation(selectedKey) {
+      for (const entry of muscleEntries) {
+        const dim = Boolean(selectedKey) && entry.mesh.userData.muscleId !== selectedKey;
+        entry.mat.opacity = dim ? 0.12 : 1;
+        entry.mat.transparent = dim;
+        if (entry.mat.needsUpdate !== dim) entry.mat.needsUpdate = true;
+      }
+      return api;
+    },
+
+    /** Move the shared outline onto a muscle (or hide it with null). */
+    setMuscleOutline(key) {
+      const entry = key ? muscles[key] : null;
+      if (!entry) {
+        outline.visible = false;
+        outline.userData.outlineFor = null;
+        return api;
+      }
+      if (outline.userData.outlineFor === key) { outline.visible = true; return api; }
+      let edges = _edgeCache.get(entry.mesh.geometry.uuid);
+      if (!edges) {
+        edges = new THREE.EdgesGeometry(entry.mesh.geometry, 30);
+        _edgeCache.set(entry.mesh.geometry.uuid, edges);
+      }
+      outline.geometry = edges;
+      // Re-parent onto the muscle's own bone so the transform follows for free.
+      if (outline.parent !== entry.mesh.parent) entry.mesh.parent.add(outline);
+      outline.position.copy(entry.mesh.position);
+      outline.quaternion.copy(entry.mesh.quaternion);
+      outline.scale.copy(entry.mesh.scale);
+      outline.userData.outlineFor = key;
+      outline.visible = true;
+      return api;
+    },
+
+    /** Cheap introspection for the debug HUD and browser contracts. */
+    stats() {
+      let triangles = 0;
+      let meshes = 0;
+      const materials = new Set();
+      root.traverse((o) => {
+        if (!o.isMesh) return;
+        meshes += 1;
+        materials.add(o.material);
+        const g = o.geometry;
+        triangles += g.index ? g.index.count / 3 : g.attributes.position.count / 3;
+      });
+      return {
+        meshes,
+        triangles: Math.round(triangles),
+        materials: materials.size,
+        bones: Object.keys(bones).length,
+        muscles: muscleEntries.length,
+        // Markers are one mesh per joint, attached to their bone, and hidden by
+        // default — so this is the draw-call cost only while the overlay is on.
+        markerDrawCalls: markerMeshes.length
+      };
+    },
+
     dispose() {
+      _edgeCache.forEach((g) => g.dispose());
+      _edgeCache.clear();
       root.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
     }
   };
+
+  return api;
 }
 
 export { BONE_TREE };

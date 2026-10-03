@@ -3,6 +3,7 @@ import { Icon } from '../components/Icons';
 import SimulationControls from '../components/SimulationControls';
 import Quiz from '../components/Quiz';
 import KinesiologyTheater from '../components/KinesiologyTheater';
+import { SPEEDS as THEATER_SPEEDS } from '../lib/kinesiology/TimeController.js';
 
 export default function KinesiologyLab({ activeView, onViewChange, onComplete, onAsk, reducedMotion }) {
   const [playing, setPlaying] = useState(!reducedMotion);
@@ -23,7 +24,7 @@ export default function KinesiologyLab({ activeView, onViewChange, onComplete, o
     ) : (
       <>
         <KinesiologyTheater activeView={activeView} reducedMotion={reducedMotion} playing={playing} setPlaying={setPlaying} speed={speed} setSpeed={setSpeed} apiRef={apiRef} />
-        {activeView === 'simulate' && <SimulationControls playing={playing} onToggle={() => setPlaying((v) => !v)} onReset={() => apiRef.current?.reset()} onStep={() => apiRef.current?.step(0.2)} speed={speed} onSpeedChange={setSpeed} label="Movement theater controls" stepLabel="Advance 0.2 s" />}
+        {activeView === 'simulate' && <SimulationControls playing={playing} onToggle={() => setPlaying((v) => !v)} onReset={() => apiRef.current?.reset()} onStep={() => apiRef.current?.step(0.2)} speed={speed} onSpeedChange={setSpeed} speeds={THEATER_SPEEDS} label="Movement theater controls" stepLabel="Advance 0.2 s" />}
         <div className="nervous-note"><Icon name="info" size={15} /><span><strong>Key idea:</strong> muscles work in teams — a prime mover produces the action while synergists shape it and stabilizers hold the platform steady. Switch camera angles to see which side of the body is doing the work.</span></div>
       </>
     )}
