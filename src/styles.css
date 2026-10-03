@@ -1889,16 +1889,29 @@ body.ff-tv .kine-stage { min-height: 62vh; }
 /* Phase 81: terminology control, honesty panel, gait ticks */
 .kine-term { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
 .kine-term > span { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #7d93ab; }
-.kine-term button { border: 1px solid rgba(125, 147, 171, 0.4); background: none; color: #a9bdd2; border-radius: 999px; padding: 3px 10px; font-size: 10px; cursor: pointer; min-height: 28px; }
+/* Phase 1 touch-target fix: 28 px chips become 44 px targets (the chip look is
+   kept by growing the padding, not the font). */
+.kine-term button { border: 1px solid rgba(125, 147, 171, 0.4); background: none; color: #a9bdd2; border-radius: 999px; padding: 8px 12px; font-size: 10px; cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; }
 .kine-term button.active { border-color: #4dd8df; color: #c9f6f9; background: rgba(77, 216, 223, 0.1); }
 .kine-honesty { margin-top: 8px; border: 1px dashed rgba(255, 179, 71, 0.45); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #ffe0b3; }
 .kine-honesty span { color: #a9bdd2; }
 .kine-honesty em { color: #ffe0b3; }
 .kine-honesty small { color: #7d93ab; font-size: 10px; }
-.kine-scrub-wrap { position: relative; }
-.kine-ticks { position: absolute; inset: 0; pointer-events: none; }
-.kine-tick { position: absolute; top: -3px; width: 2px; height: 8px; padding: 0; border: 0; border-radius: 1px; background: rgba(77, 216, 223, 0.65); pointer-events: auto; cursor: pointer; min-height: 14px; transform: translateX(-1px); }
-.kine-tick:focus-visible { outline: 2px solid #4dd8df; outline-offset: 2px; }
+/* Phase 1 touch-target fix (Masterplan §3 audit). The eight gait ticks used to
+   be 2x8 px marks *on top of* the scrub track with a 14 px tap target. Widening
+   them in place is not an option: the hit columns would cover ~40 % of the
+   track and swallowing a drag there would kill scrubbing. So the ticks move to
+   their own 44 px ruler strip under the track, and each tick becomes a real
+   40x44 px target (40, not 44, because eight ticks on a 360 px phone sit ~41 px
+   apart; 40 keeps them side by side without overlap) while the visible mark
+   stays a 2x10 px line at the top of its column. */
+.kine-scrub-wrap { position: relative; padding-bottom: 44px; }
+.kine-ticks { position: absolute; left: 0; right: 0; bottom: 0; height: 44px; pointer-events: none; border-bottom: 1px solid rgba(39, 64, 92, 0.7); }
+.kine-tick { position: absolute; top: 0; width: 40px; height: 44px; padding: 0; border: 0; background: none; pointer-events: auto; cursor: pointer; transform: translateX(-50%); }
+.kine-tick::after { content: ''; position: absolute; left: 50%; top: 0; width: 2px; height: 10px; margin-left: -1px; border-radius: 1px; background: rgba(77, 216, 223, 0.65); }
+.kine-tick:hover::after, .kine-tick:focus-visible::after { background: #4dd8df; height: 14px; }
+.kine-tick:focus-visible { outline: 2px solid #4dd8df; outline-offset: -2px; }
+@media (max-width: 640px) { .kine-scrub-wrap { padding-bottom: 40px; } .kine-ticks { height: 40px; } .kine-tick { height: 40px; } }
 
 /* Phase 82: joint angle readout */
 .kine-angles { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }

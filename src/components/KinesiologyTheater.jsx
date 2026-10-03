@@ -1435,6 +1435,14 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
             <span>Typical comfortable adult gait ≈ 1.3 m/s · ~110 steps/min · 0.72 m step — this clip is a <em>leisurely</em> walk.</span>
             <small>Teaching estimate — not a clinical measurement.</small>
           </div>}
+          {/* Panel ownership after Phase 1 (no duplication of truth):
+              .kine-angles = the *trace* panel — the precomputed curve, the gait
+              band and the playhead marker, so a learner sees where in the cycle
+              the value sits. .kine-rom = the *number* panel — live value, min/max,
+              phase, arrow and the AAOS/gait reference band with its provenance.
+              Both are written from the SAME tracker object in the same 15 Hz
+              publication, so they cannot disagree; the split is trace vs number,
+              not two angle paths (that was the audit A19 defect fixed in Phase 1). */}
           {action.source === 'cmu' && angleData && <div className="kine-angles" aria-label="Left leg sagittal joint angles">
             <span className="eyebrow">LEFT LEG ANGLES · SAGITTAL</span>
             {['hip', 'knee', 'ankle'].map((j) => <div className="kine-angle-row" key={j}>

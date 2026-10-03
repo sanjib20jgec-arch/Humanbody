@@ -86,6 +86,9 @@ must(/\.kine-rom-row\[data-out-of-band='true'\]/.test(styles), 'Out-of-range row
 
 // ---- touch targets ----------------------------------------------------------
 must(/\.kine-speed-group button, \.kine-loop-group button, \.kine-snap-group button \{ min-height: 44px; \}/.test(styles), 'New transport groups are below the 44 px touch target on coarse pointers');
+must(/\.kine-term button \{[^}]*min-height: 44px/.test(styles), 'The 28 px terminology chips are still below the touch-target floor');
+must(/\.kine-tick \{[^}]*width: 40px; height: 44px/.test(styles), 'The gait ticks lost their 40x44 px target');
+must(/\.kine-scrub-wrap \{ position: relative; padding-bottom: 44px/.test(styles), 'The tick ruler no longer has its own 44 px strip (widening the marks in place would cover the scrub track)');
 
 // ---- telemetry citations ----------------------------------------------------
 must(/ZERO_REFERENCE/.test(theater) && /ROM_SOURCES/.test(theater), 'The telemetry panel no longer cites the zero reference and band sources');

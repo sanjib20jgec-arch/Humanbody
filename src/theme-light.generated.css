@@ -1011,7 +1011,9 @@
 :root[data-theme="light"] .kine-honesty span { color: #2f4051 }
 :root[data-theme="light"] .kine-honesty em { color: #2b1b01 }
 :root[data-theme="light"] .kine-honesty small { color: #4f647a }
-:root[data-theme="light"] .kine-tick { background: rgba(18,97,101,0.65) }
+:root[data-theme="light"] .kine-ticks { border-bottom: 1px solid rgba(75,101,132,0.7) }
+:root[data-theme="light"] .kine-tick::after { background: rgba(18,97,101,0.65) }
+:root[data-theme="light"] .kine-tick:hover::after, :root[data-theme="light"] .kine-tick:focus-visible::after { background: #126165 }
 :root[data-theme="light"] .kine-tick:focus-visible { outline: 2px solid #126165 }
 :root[data-theme="light"] .kine-angle-name { color: #4f647a }
 :root[data-theme="light"] .kine-angle-svg { background: rgba(233,231,227,0.7) }
