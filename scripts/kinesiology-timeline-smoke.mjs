@@ -8,6 +8,9 @@
 // Everything here is deterministic: no timers, no rendering, no DOM.
 
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import { gzipSync } from 'node:zlib';
 import * as THREE from 'three';
 
 import {
@@ -21,10 +24,20 @@ import {
   buildClipManifest, buildSnapPoints, snapFrames, withContacts, collectManifestWarnings
 } from '../src/lib/kinesiology/clipManifest.js';
 import { AAOS_ROM, GAIT_BANDS, ROM_SOURCES, ZERO_REFERENCE, romCandidatesFor } from '../src/data/kinesiology/romBands.js';
-import { sampleSagittalAngles } from '../src/lib/kinesiology/jointAngles.js';
+import { sampleSagittalAngles, calibrateAngles } from '../src/lib/kinesiology/jointAngles.js';
 import { ACTIONS } from '../src/lib/kinesiology/actions.js';
 import { CAMERA_PRESETS, PLANE_PRESETS, ANCHOR_JOINTS, CAMERA_LIMITS, cameraStateFor, CameraDirector } from '../src/lib/kinesiology/cameraDirector.js';
 import { buildPerformanceRig, ROLE_COLORS, ACTIVATION_RAMP, MUSCLES } from '../src/lib/kinesiology/performanceRig.js';
+import { parseBVH } from '../src/lib/kinesiology/bvh.js';
+import { computeCalibration as bvhCalibration, applyBVHFrame } from '../src/lib/kinesiology/retarget.js';
+import {
+  decodeClipTracks, applyTrackFrame, trackAngles, zeroOffsetForClip, groundOffsetForRig,
+  stanceForRig, gaitStatsFromTracks, trackWorldPosition, QUAT_SCALE
+} from '../src/lib/kinesiology/motionTracks.js';
+// The baked assets are read from disk (not imported) so the same file works in
+// node ESM and in the bundler without import attributes.
+const walkDoc = JSON.parse(fs.readFileSync('src/data/kinesiology/clips/walk_cmu.json', 'utf8'));
+const jumpDoc = JSON.parse(fs.readFileSync('src/data/kinesiology/clips/jump_cmu.json', 'utf8'));
 
 let passed = 0;
 let failed = 0;
@@ -40,7 +53,8 @@ function test(name, fn) {
 }
 const near = (a, b, tol = 1e-6) => assert.ok(Math.abs(a - b) <= tol, `expected ${a} ≈ ${b} (±${tol})`);
 
-// A 120-frame 30 fps clip is the walk; a 90-frame jump is the second grid. ---------------------------------
+// Synthetic grid fixture for the clock/layout maths (deliberately not the shipped
+// walk clip, which is 64 frames after the Phase 2 trim).
 const WALK = { fps: 30, frameCount: 120, duration: 4 };
 
 // ---------------------------------------------------------------- TimeController
@@ -717,8 +731,8 @@ test('camera returns to the preset orientation after orbit → re-center (<= 0.5
 test('every one of the 20 actions gets a manifest with an exact frame grid', () => {
   const manifests = ACTIONS.map((action) => buildClipManifest({
     action,
-    clipMeta: action.clip === 'walk_cmu.bvh' ? { frames: 120, frameTime: 1 / 30 }
-      : action.clip === 'jump_cmu.bvh' ? { frames: 90, frameTime: 1 / 30 } : null
+    clipMeta: action.clip === 'walk_cmu.bvh' ? { frames: walkDoc.frames, frameTime: walkDoc.frameTime }
+      : action.clip === 'jump_cmu.bvh' ? { frames: jumpDoc.frames, frameTime: jumpDoc.frameTime } : null
   }));
   assert.equal(manifests.length, 20);
   for (const m of manifests) {
@@ -734,6 +748,240 @@ test('every one of the 20 actions gets a manifest with an exact frame grid', () 
   }
 });
 
+
+// ---------------------------------------------------------------- Phase 2: baked motion tracks
+// The plan promised "BVH -> quantised quaternion tracks (removes the 76 ms parse)".
+// Measurement said the parse was ~6 % of the load and the *scene sweeps* were the
+// cost, so these tests pin what actually matters: the baked pose equals the BVH
+// pose, the derived quantities are rig-consistent, loading performs no scene-graph
+// sweep at all, and the payload stays small.
+const CLIP_DOCS = { walk_cmu: walkDoc, jump_cmu: jumpDoc };
+const ZERO_ANGLES = { hip: 0, knee: 0, ankle: 0 };
+
+function bvhFor(key) {
+  const text = fs.readFileSync(`src/data/kinesiology/${key}.bvh`, 'utf8');
+  return { text, bvh: parseBVH(text) };
+}
+
+test('baked assets decode against their declared grid and record their source range', () => {
+  for (const [key, doc] of Object.entries(CLIP_DOCS)) {
+    const tracks = decodeClipTracks(doc);
+    assert.equal(tracks.clip, key);
+    assert.equal(tracks.frames, doc.frames);
+    assert.ok(tracks.frames >= 45, `${key}: only ${tracks.frames} frames`);
+    assert.equal(tracks.bones.length, doc.bones.length);
+    assert.ok(tracks.bones.includes('root'), `${key}: the pelvis is not driven (the missing hip-joint mapping bug)`);
+    assert.ok(
+      !tracks.bones.some((b) => /UpperArm|Clavicle/.test(b)),
+      `${key}: the arm chain must stay unmapped until the rest-frame retarget lands (R3)`
+    );
+    assert.equal(tracks.quats.length, tracks.frames * tracks.bones.length * 4);
+    assert.equal(tracks.rootPos.length, tracks.frames * 3);
+    assert.ok(doc.sourceRange && doc.sourceRange.sourceFrames >= doc.sourceRange.to + 1, `${key}: source range not recorded`);
+  }
+});
+
+test('the baked asset still matches the BVH it was generated from', () => {
+  for (const [key, doc] of Object.entries(CLIP_DOCS)) {
+    const { text } = bvhFor(key);
+    assert.equal(
+      createHash('sha256').update(text).digest('hex'),
+      doc.sourceSha256,
+      `${key}: the source BVH changed since the bake — run "node scripts/bake-motion-assets.mjs"`
+    );
+  }
+});
+
+test('the baked pose equals the BVH pose for every frame and bone (quantisation only)', () => {
+  const rig = buildPerformanceRig(THREE, { lowPoly: true });
+  for (const [key, doc] of Object.entries(CLIP_DOCS)) {
+    const tracks = decodeClipTracks(doc);
+    const { bvh } = bvhFor(key);
+    const cal = bvhCalibration(THREE, bvh);
+    const qRef = new THREE.Quaternion();
+    let worstDeg = 0;
+    let worstComponent = 0;
+    for (let i = 0; i < tracks.frames; i++) {
+      const f = doc.sourceRange.from + i;
+      applyBVHFrame(THREE, rig, bvh, f, cal);
+      for (const bone of tracks.bones) {
+        if (bone === 'root') continue; // the heading normalisation is asserted separately
+        qRef.copy(rig.bones[bone].quaternion);
+        applyTrackFrame(THREE, rig, tracks, i, { yOffset: 0 });
+        worstDeg = Math.max(worstDeg, (qRef.angleTo(rig.bones[bone].quaternion) * 180) / Math.PI);
+        worstComponent = Math.max(
+          worstComponent,
+          Math.abs(qRef.x - rig.bones[bone].quaternion.x),
+          Math.abs(qRef.y - rig.bones[bone].quaternion.y),
+          Math.abs(qRef.z - rig.bones[bone].quaternion.z),
+          Math.abs(qRef.w - rig.bones[bone].quaternion.w)
+        );
+      }
+    }
+    assert.ok(worstComponent < 1.5 / QUAT_SCALE, `${key}: quantisation step exceeded (${worstComponent.toExponential(2)})`);
+    assert.ok(worstDeg < 0.01, `${key}: quantisation costs ${worstDeg.toFixed(4)}° of pose`);
+  }
+});
+
+test('heading normalisation keeps the sway small and the loop closed — without flattening the gait', () => {
+  const rig = buildPerformanceRig(THREE, { lowPoly: true });
+  for (const [key, doc] of Object.entries(CLIP_DOCS)) {
+    const tracks = decodeClipTracks(doc);
+    const facing = [];
+    for (let i = 0; i < tracks.frames; i++) {
+      applyTrackFrame(THREE, rig, tracks, i, { yOffset: 0 });
+      rig.root.updateMatrixWorld(true);
+      const q = rig.bones.root.getWorldQuaternion(new THREE.Quaternion());
+      const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+      facing.push((Math.atan2(fwd.x, fwd.z) * 180) / Math.PI);
+    }
+    const centre = facing.reduce((a, b) => a + b, 0) / facing.length;
+    const maxDev = Math.max(...facing.map((v) => Math.abs(v - centre)));
+    const loopGap = Math.abs(facing[0] - facing[facing.length - 1]);
+    const spread = Math.max(...facing) - Math.min(...facing);
+    assert.ok(maxDev <= 12, `${key}: the figure pivots ${maxDev.toFixed(1)}° while moving in place`);
+    assert.ok(loopGap <= 6, `${key}: facing jumps ${loopGap.toFixed(1)}° across the loop seam`);
+    // The capture's own transverse pelvic motion must survive: flattening it would
+    // be a silent fidelity loss dressed up as "normalisation".
+    assert.ok(spread >= 1.5, `${key}: pelvic transverse motion was flattened away (spread ${spread.toFixed(1)}°)`);
+  }
+});
+
+test('the shipped captures are trimmed to their usable cycles and the actions agree', () => {
+  const walk = CLIP_DOCS.walk_cmu;
+  assert.deepEqual(walk.sourceRange, { from: 0, to: 63, sourceFrames: 120 }, 'the walk trim changed without re-measuring the loop seam');
+  const walkDuration = walk.frames / walk.fps;
+  assert.ok(walkDuration > 2 && walkDuration < 2.5, `walk duration ${walkDuration.toFixed(2)}s is outside the measured 2.13s`);
+  near(ACTIONS.find((a) => a.id === 'walk').duration, walkDuration, 1e-6);
+  assert.ok(walk.provenance.headingNormalisation.captureYawSpread > 5, 'the capture turn is no longer recorded in the asset provenance');
+
+  // The jump source is a repeated-hop capture whose tail is a deep kneel
+  // (knee 155-170 deg). Frames 0-65 are the hop; the tail is cut so the ROM
+  // panel can never show an impossible reading.
+  const jump = CLIP_DOCS.jump_cmu;
+  assert.deepEqual(jump.sourceRange, { from: 0, to: 65, sourceFrames: 90 }, 'the jump trim changed without re-measuring');
+  near(ACTIONS.find((a) => a.id === 'jump').duration, jump.frames / jump.fps, 1e-6);
+});
+
+test('rig-derived quantities come from the baked clip without sweeping the scene', () => {
+  const rig = buildPerformanceRig(THREE, { lowPoly: true });
+  let sweeps = 0;
+  const real = rig.root.updateMatrixWorld.bind(rig.root);
+  rig.root.updateMatrixWorld = (...args) => { sweeps += 1; return real(...args); };
+  for (const [key, doc] of Object.entries(CLIP_DOCS)) {
+    const tracks = decodeClipTracks(doc);
+    const yOffset = groundOffsetForRig(THREE, rig, tracks);
+    const stance = stanceForRig(THREE, rig, tracks, yOffset);
+    const gait = gaitStatsFromTracks(tracks, stance);
+    const offset = zeroOffsetForClip(THREE, tracks);
+    for (let i = 0; i < tracks.frames; i++) trackAngles(THREE, tracks, i, offset);
+    const pos = new THREE.Vector3();
+    let lowest = Infinity;
+    let highest = -Infinity;
+    for (let i = 0; i < tracks.frames; i++) {
+      for (const side of ['left', 'right']) {
+        trackWorldPosition(THREE, rig, tracks, i, `${side}Foot`, { yOffset }, pos);
+        lowest = Math.min(lowest, pos.y);
+        highest = Math.max(highest, pos.y);
+      }
+    }
+    near(lowest, 0.02, 0.005);
+    assert.ok(highest - lowest > 0.05, `${key}: the feet never leave the floor (${(highest - lowest).toFixed(3)} m)`);
+    assert.ok(gait.speed > 0 && gait.speed < 3, `${key}: implausible travel speed ${gait.speed} m/s`);
+    assert.ok(gait.contacts.length >= 2, `${key}: fewer than 2 detected contacts`);
+    for (const side of ['left', 'right']) {
+      assert.ok(stance[side].windows.length >= 1, `${key}/${side}: no stance windows detected`);
+      for (const w of stance[side].windows) {
+        assert.ok(w.start >= 0 && w.end < tracks.frames && w.end >= w.start, `${key}/${side}: window ${w.start}-${w.end} outside the grid`);
+      }
+    }
+  }
+  assert.equal(sweeps, 0, `loading a clip still cost ${sweeps} full-scene updateMatrixWorld sweeps`);
+});
+
+test('the chain forward kinematics equals the scene graph to machine precision', () => {
+  const rig = buildPerformanceRig(THREE, { lowPoly: true });
+  const tracks = decodeClipTracks(walkDoc);
+  const yOffset = groundOffsetForRig(THREE, rig, tracks);
+  const v = new THREE.Vector3();
+  const real = new THREE.Vector3();
+  let worst = 0;
+  for (let i = 0; i < tracks.frames; i += 7) {
+    applyTrackFrame(THREE, rig, tracks, i, { yOffset });
+    rig.root.updateMatrixWorld(true);
+    for (const bone of ['leftFoot', 'rightFoot', 'leftLeg', 'leftUpLeg', 'head']) {
+      rig.bones[bone].getWorldPosition(real);
+      trackWorldPosition(THREE, rig, tracks, i, bone, { yOffset }, v);
+      worst = Math.max(worst, real.distanceTo(v));
+    }
+  }
+  assert.ok(worst < 1e-6, `chain FK drifts ${worst.toExponential(2)} m from the scene graph`);
+});
+
+test('baked angles match the live geometry sampler (the two readout paths cannot diverge)', () => {
+  const rig = buildPerformanceRig(THREE, { lowPoly: true });
+  for (const [key, doc] of Object.entries(CLIP_DOCS)) {
+    const tracks = decodeClipTracks(doc);
+    const { bvh } = bvhFor(key);
+    const cal = bvhCalibration(THREE, bvh);
+    const apply = (f) => applyBVHFrame(THREE, rig, bvh, f, cal);
+    const ref = calibrateAngles(THREE, rig, apply, [doc.sourceRange.from]);
+    let worst = 0;
+    const sampleFrames = [0, 1, Math.floor(tracks.frames / 2), tracks.frames - 1];
+    for (const i of sampleFrames) {
+      const live = sampleSagittalAngles(THREE, rig, apply, doc.sourceRange.from + i, cal, ZERO_ANGLES);
+      const baked = trackAngles(THREE, tracks, i, ZERO_ANGLES);
+      for (const j of ['hip', 'knee', 'ankle']) worst = Math.max(worst, Math.abs(live[j] - baked[j]));
+    }
+    // The heading normalisation rotates the root, but the sampler flattens into
+    // the root frame, so the readings are yaw-invariant; only the residual
+    // heading (<= ~10 deg of pelvic rotation) and quantisation act, which is why
+    // the tolerance is a quarter of a degree rather than a hundredth.
+    assert.ok(worst < 0.25, `${key}: baked angles differ from the geometry sampler by ${worst.toFixed(3)}°`);
+    // The clip-relative offset helper still works and is still exposed: the
+    // Phase 3 SME review wants the clip-zero curve and the segment curve side by
+    // side (Q11). It is NOT what the shipped UI uses — see the segment-reference
+    // test below.
+    const first = trackAngles(THREE, tracks, 0, zeroOffsetForClip(THREE, tracks));
+    near(first.hip - first.hip, 0, 1e-12);
+    near(first.knee, 0, 0.01);
+  }
+});
+
+test('the shipped angle reference is the segment angle, and every reading is physiologically possible', () => {
+  const rig = buildPerformanceRig(THREE, { lowPoly: true });
+  // A learner must never see "knee -69 deg". The reference shipped in the UI is
+  // the inter-segment angle (0 = segments aligned); the clip-relative reference
+  // produced negative knee flexion on both clips because both start mid-air.
+  for (const [key, doc] of Object.entries(CLIP_DOCS)) {
+    const tracks = decodeClipTracks(doc);
+    const angles = [];
+    for (let i = 0; i < tracks.frames; i++) angles.push(trackAngles(THREE, tracks, i, ZERO_ANGLES));
+    const r = (j) => [Math.min(...angles.map((a) => a[j])), Math.max(...angles.map((a) => a[j]))];
+    const [hipLo, hipHi] = r('hip');
+    const [kneeLo, kneeHi] = r('knee');
+    const [ankleLo, ankleHi] = r('ankle');
+    assert.ok(kneeLo > -6, `${key}: knee flexion reads ${kneeLo.toFixed(1)}° — segment flexion cannot be negative`);
+    assert.ok(kneeHi < 150, `${key}: knee flexion reads ${kneeHi.toFixed(1)}° — beyond any human range`);
+    assert.ok(hipHi < 150 && hipLo > -60, `${key}: hip range ${hipLo.toFixed(0)}..${hipHi.toFixed(0)}° is not a hinge range`);
+    assert.ok(ankleHi < 60 && ankleLo > -60, `${key}: ankle range ${ankleLo.toFixed(0)}..${ankleHi.toFixed(0)}° is not a hinge range`);
+    // and the muscles must actually work: a walk with under 20 deg of knee travel
+    // is a slide, not a gait cycle
+    assert.ok(kneeHi - kneeLo > 20, `${key}: knee travels only ${(kneeHi - kneeLo).toFixed(1)}°`);
+    void rig;
+  }
+});
+
+test('the baked payload stays inside the Phase 2 size budget', () => {
+  for (const [key, doc] of Object.entries(CLIP_DOCS)) {
+    const json = JSON.stringify(doc);
+    const raw = json.length;
+    const gz = gzipSync(Buffer.from(json)).length;
+    assert.ok(raw < 24 * 1024, `${key}: asset ${(raw / 1024).toFixed(1)} kB exceeds the 24 kB budget`);
+    assert.ok(gz < 16 * 1024, `${key}: gzipped asset ${(gz / 1024).toFixed(1)} kB exceeds the 16 kB budget`);
+  }
+});
+
 // ---------------------------------------------------------------- summary
 const total = passed + failed;
 if (failed) {
@@ -741,4 +989,4 @@ if (failed) {
   for (const f of failures) console.error(`  ✗ ${f}\n`);
   process.exit(1);
 }
-console.log(`HBL Movement Theater Phase 1 checks passed (${passed} checks: timeline, telemetry, ROM bands, clip manifest, ground-truth angles, phase flicker, camera, palette, rig).`);
+console.log(`HBL Movement Theater checks passed (${passed} checks: timeline, telemetry, ROM bands, clip manifest, ground-truth angles, phase flicker, camera, palette, rig, baked motion tracks).`);

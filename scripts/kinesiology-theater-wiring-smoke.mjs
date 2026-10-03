@@ -74,6 +74,16 @@ must(/onStep=\{\(\) => apiRef\.current\?\.step\(0\.2\)\}/.test(lab), 'The extern
 // ---- timeline internals -----------------------------------------------------
 must(/timeSeconds|tSeconds/.test(timeline), 'TimeController lost its derived time getters');
 must(/assertDuration/.test(timeline), 'TimeController no longer exposes the declared-duration check (audit A19)');
+
+// ---- the shipped angle reference -------------------------------------------
+// Segment angles (0 deg = the two segments are aligned), not clip-frame-0.
+// Measured 2026-10-04: the clip-relative reference showed a -69 deg knee on the
+// jump clip and disagreed with the authored tracks, which have always reported
+// segment angles. The zero-offset helper stays exported for the Phase 3 SME
+// side-by-side (Q11); it must not creep back into the shipped readout.
+must(/const ANGLE_REFERENCE = 'segment'/.test(theater), 'the shipped angle reference is no longer declared');
+must(/const ANGLE_OFFSET = \{ hip: 0, knee: 0, ankle: 0 \}/.test(theater), 'the shipped angle offset is no longer a zero (segment) offset');
+must(!/const offset = zeroOffsetForClip\(THREE, c\.tracks\)/.test(theater), 'the clip-frame-0 calibration reference is back in the shipped readout (Q11)');
 must(!/Math\.floor\(tn \* clip\.bvh\.frames\)/.test(theater), 'Frame sampling is derived from duration again instead of the frame index');
 
 // ---- palette ----------------------------------------------------------------

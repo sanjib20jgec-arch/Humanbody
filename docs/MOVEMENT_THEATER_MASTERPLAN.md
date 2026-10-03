@@ -817,7 +817,7 @@ Shipped in this build (branch `arena/01a10393-humanbody`):
 | Touch-target fixes from the §3 audit: 28 px terminology chips → 44 px. The gait ticks were 2 × 8 px marks on top of the scrub track with a 14 px target; widening them in place would cover ~40 % of the track and swallow drag starts, so they moved to their own 44 px ruler strip under the track and are now **40 × 44 px** targets (40, not 44: eight ticks on a 360 px phone sit ~41 px apart) with a 2 × 10 px visible mark | `src/styles.css` | wiring check pins both rules |
 | **Cross-path angle-sign fix** (retargeted sampler vs authored reader disagreed by sign for hip and ankle on the same pose) | `src/lib/kinesiology/jointAngles.js` | timeline smoke (two paths agree within ±1° on three synthetic poses; independent projection check) |
 | M1 harness (`__kineDebug.report()`: frame ring, p95, draw calls, textures, DOM-write counters, scrub latency) **plus an in-app run button** so the device gate can be run on a phone without a console (DEV, or `?m1=1` on a production preview) | `src/components/KinesiologyTheater.jsx`, `src/styles.css` | `docs/MOVEMENT_THEATER_M1_MEASUREMENTS.md` protocol; browser spec asserts the JSON keys |
-| Automated gates in CI: `verify:kine-timeline` (54 checks) and `verify:kine-wiring` (static contracts), both added to `npm run verify` | `package.json` | full `npm run verify` green in the sandbox; 166 browser tests listed (`npx playwright test --list`), **unrun for lack of a browser** |
+| Automated gates in CI: `verify:kine-timeline` (64 checks), `verify:kine-wiring` (static contracts) and `verify:motion-assets` (bake freshness), all three added to `npm run verify` | `package.json` | full `npm run verify` green in the sandbox; 166 browser tests listed (`npx playwright test --list`), **unrun for lack of a browser** |
 
 Not yet proven (needs a physical device — no GPU browser is available in the dev sandbox):
 
@@ -836,9 +836,22 @@ corrective morphs (Phase 2), culling tiers A–D (Phase 4), contact-detector
 rewrite and the calibration-reference decision (Phase 3 + Q11/R10).
 
 ### Phase 2 — Deformation & Fidelity (skinned figure)
+
+**Landed before the art commission (motion-data half of Phase 2, 2026-10-04).**
+The tracks half of this phase does not depend on the artist, so it shipped early and
+is now covered by permanent gates:
+
+| Item | What shipped | Gate |
+|---|---|---|
+| Baked clips | `src/data/kinesiology/clips/{walk_cmu,jump_cmu}.json` — 30 Hz, 15 bones, 16-bit quaternions, `sourceRange` + `sourceSha256` provenance; walk 12.0 kB raw / 8.7 kB gz (64 frames), jump 12.4 kB / 9.0 kB gz (66 frames) | `verify:motion-assets` (`--check` re-bakes and diffs), timeline smoke size budget (<24 kB raw, <16 kB gz) |
+| Clip trims | The captures are not clean cycles: the walk source is a **walk and turn** (root yaw −34°…+70.6°; only cuts at frame 63/64 leave a loop seam under 8°, end 63 chosen at 6.3°) and the jump source is a **hop sequence that ends in a deep kneel** (knee 155–170°). Walk ships frames 0–63, jump 0–65 | timeline smoke pins `sourceRange` for both, plus facing deviation ≤12°, loop gap ≤6°, preserved pelvic rotation ≥1.5° |
+| Contact rule | Replaced "ankle below 12 cm and under 1 m/s" (speed-dependent: 1.0 m/s sat just above the walk's own 0.46–0.9 m/s speed, so a faster clip would report no contacts) with "the foot is not travelling over the ground in the capture frame, < 0.25 m/s" | asset smoke grades foot-plant IK **on the shipped range**: naive 0.556 m → 0.084 m (15 %, was 34 % graded on the untrimmed 120-frame source) |
+| Angle reference | **Segment angles** (0° = the two segments are aligned), not clip-frame-0 | timeline smoke asserts every shipped reading is physiologically possible (knee flexion never negative, hip/knee/ankle inside hinge ranges); wiring smoke pins the constant so clip-zero cannot creep back |
+
+
 | | |
 |---|---|
-| **Scope** | Commission the skinned figure per §4.1; twist helpers; 4 corrective morphs; procedural muscle belly deformation driven by activation × joint velocity; LOD chain; muscle picking preserved via `aMuscleId`; BVH → quantised quaternion tracks (removes the 76 ms parse). |
+| **Scope** | Commission the skinned figure per §4.1; twist helpers; 4 corrective morphs; procedural muscle belly deformation driven by activation × joint velocity; LOD chain; muscle picking preserved via `aMuscleId`; BVH → quantised quaternion tracks — **shipped ahead of the skinned figure and measured**: the whole clip path (decode + ground offset + stance windows + gait stats) now costs 4.6 ms (walk) / 5.8 ms (jump) against 76.1 ms for the old parse + calibrate + stance step, and per-frame pose application performs **0 scene-graph sweeps** (down from 361/331 per clip) because the baked tracks write matrices directly. |
 | **Deliverables** | `figure.glb` + `figure.manifest.json` + texture set; updated `PoseSampler` (skinned path); muscle-binding table; automated weight/morph/vertex validators; artist checklist executed and signed. |
 | **Dependencies** | Phase 1 (TimeController/PoseSampler interfaces); artist availability; decision on the commissioning model (see open question Q1). |
 | **Effort** | **12–16 eng-days** engineering + **15–25 artist-days** |
@@ -942,7 +955,7 @@ Sign-off is **human-only** (consistent with the repo's existing G1/G4 gate cultu
 | Q8 | **Motion data acquisition:** stay with CMU-derived clips (licence-constrained) or fund 6–10 new captures/authorings for the priority actions? | Determines whether walk/run quality can improve beyond retarget+IK | Stay with CMU + authored; improve foot-plant only |
 | Q9 | **Is the clinical-pattern ghost feature in scope** (currently crude) or should it be cut for this release to protect the budget? | Extra transparent draws + SME review time | Keep but cap at 0.35 opacity, Low tier disables it |
 | Q10 | **Telemetry export:** do users need CSV/JSON export of the angle curves (adds UI + file I/O), or is on-screen + Anki TSV enough? | Small but non-zero scope | On-screen only; export deferred |
-| Q11 | **Calibration reference for the angle curves** (raised by the Phase 1 build): keep *clip frame 0 = 0°* (current, simple, but wrong when a capture starts mid-stride — the walk clip starts mid-swing, so its hip flexion reads 0 at ~mid-swing), or switch to an *anatomical zero from the rig's rest pose* (correct in principle, but the two CMU clips' frame-0 poses are 38°/102° away from it in the knee, which needs the retarget axes verified first)? | Every angle number shown to students depends on this; it is also the SME reviewer's row 3 in §8.3 | Keep clip-zero for release 1, show the reference in the panel, and put the decision in the Phase 3 SME review with both curves side by side |
+| Q11 | **Calibration reference for the angle curves** (raised by the Phase 1 build): keep *clip frame 0 = 0°* (current, simple, but wrong when a capture starts mid-stride — the walk clip starts mid-swing, so its hip flexion reads 0 at ~mid-swing), or switch to an *anatomical zero from the rig's rest pose* (correct in principle, but the two CMU clips' frame-0 poses are 38°/102° away from it in the knee, which needs the retarget axes verified first)? | Every angle number shown to students depends on this; it is also the SME reviewer's row 3 in §8.3 | **Original plan:** keep clip-zero for release 1, show the reference in the panel, and put the decision in the Phase 3 SME review with both curves side by side. **Superseded 2026-10-04 by measurement** — clip-zero was not merely imprecise, it produced *impossible* readings: knee flexion came out negative on both clips (walk −4…25° for a true 34…63°; jump −69…3° for a true 34…123°) because both captures start mid-air, and it disagreed with the authored tracks, which have always reported segment angles. The shipped reference is now the segment angle (`ANGLE_REFERENCE = 'segment'`, zero offset), the panel states it, and the clip-zero helper stays exported for the Phase 3 SME side-by-side. This also satisfies the acceptance criterion of an angle readout within 1° of ground truth, which the clip-zero reference missed by 38–102°. |
 
 ---
 

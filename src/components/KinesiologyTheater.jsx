@@ -3,13 +3,18 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { buildPerformanceRig } from '../lib/kinesiology/performanceRig.js';
-import { parseBVH } from '../lib/kinesiology/bvh.js';
-import { computeCalibration, finalizeGround, applyBVHFrame, computeStanceData, applyFootPlant } from '../lib/kinesiology/retarget.js';
+import { applyFootPlant } from '../lib/kinesiology/retarget.js';
+import {
+  decodeClipTracksMap, applyTrackFrame, trackAngles,
+  groundOffsetForRig, stanceForRig, gaitStatsFromTracks
+} from '../lib/kinesiology/motionTracks.js';
+import walkTracks from '../data/kinesiology/clips/walk_cmu.json';
+import jumpTracks from '../data/kinesiology/clips/jump_cmu.json';
 import { AUTHORED_ACTIONS, applyAuthoredPose, CLINICAL_PATTERNS } from '../lib/kinesiology/authoredTracks.js';
 import { ACTIONS, ACTION_BY_ID, COACH_CUES } from '../lib/kinesiology/actions.js';
 import { MUSCLE_FACTS, factFor, sideLabel } from '../data/kinesiology/muscleFacts.js';
 import { CAMERA_PRESETS, PLANE_PRESETS, ANCHOR_JOINTS, cameraStateFor, framingForAction, CameraDirector } from '../lib/kinesiology/cameraDirector.js';
-import { sampleSagittalAngles, calibrateAngles, NORM_BANDS, curvePath, bandPolygon } from '../lib/kinesiology/jointAngles.js';
+import { NORM_BANDS, curvePath, bandPolygon } from '../lib/kinesiology/jointAngles.js';
 // Movement Theater Phase 1 (Masterplan §2): time ownership, clip grid, telemetry.
 import { TimeController, LOOP_ONCE, LOOP_LOOP, LOOP_PINGPONG, SPEEDS as TIME_SPEEDS } from '../lib/kinesiology/TimeController.js';
 import { buildClipManifest, withContacts, collectManifestWarnings, AUTHORED_FPS } from '../lib/kinesiology/clipManifest.js';
@@ -17,10 +22,12 @@ import { JointTracker, PhaseEngine, anglesFromAuthoredPose, bandForReadout, crea
 import { ROM_SOURCES, ZERO_REFERENCE } from '../data/kinesiology/romBands.js';
 import { getDeviceProfile } from '../lib/deviceProfile.js';
 import { Icon } from './Icons';
-import walkClip from '../data/kinesiology/walk_cmu.bvh?raw';
-import jumpClip from '../data/kinesiology/jump_cmu.bvh?raw';
 
-const CLIPS = { walk_cmu: walkClip, jump_cmu: jumpClip };
+
+// Phase 2: the clips are baked, quantised assets — see
+// src/lib/kinesiology/motionTracks.js for why the BVH text is no longer loaded
+// at runtime and scripts/bake-motion-assets.mjs for how they are produced.
+const CLIP_DOCS = { walk_cmu: walkTracks, jump_cmu: jumpTracks };
 const PLANE_BY_ACTION = { walk: 'Sagittal', run: 'Sagittal', jump: 'Sagittal', wave: 'Frontal', handshake: 'Sagittal', chew: 'Transverse', talk: 'Multiple' };
 const SOURCE_BADGE = {
   cmu: 'CMU motion capture (retargeted)',
@@ -50,6 +57,25 @@ const READOUT_LABELS = { hip: 'Hip', knee: 'Knee', ankle: 'Ankle' };
  * this envelope. Antagonist therefore only appears for curated clips in Phase 1 —
  * Masterplan §4.1 moves the whole table to content/kinesiology/clips/*.json.
  */
+// Pillar 4 angle reference (Masterplan §3.4 / Q11, decided on measurement).
+//
+// Retargeted clips are reported in SEGMENT terms: 0 deg means the two segments
+// are aligned (anatomical zero), which is what the geometry sampler measures and
+// what `anglesFromAuthoredPose` has always reported for the authored tracks. The
+// earlier clip-frame-0 calibration shifted the whole curve by whatever the first
+// frame happened to be, which (a) disagreed with the authored path and (b) made
+// the readings meaningless on clips that do not start standing:
+//
+//   clip    frame-0 raw hip/knee   clip-zero range (knee)   segment range (knee)
+//   walk         6 / 38 deg            -4 .. 25 deg            34 .. 63 deg
+//   jump        74 / 102 deg          -69 .. 3 deg             34 .. 123 deg
+//
+// A learner must never see "knee -69". The reference is therefore the segment
+// angle; `.kine-rom-note` states it, and the ROM band comparison only makes sense
+// against it.
+const ANGLE_REFERENCE = 'segment';
+const ANGLE_OFFSET = { hip: 0, knee: 0, ankle: 0 };
+
 const ROLE_PEAK_AGONIST = 0.7;
 const ROLE_PEAK_SYNERGIST = 0.38;
 const ROLE_PEAK_STABILIZER = 0.15;
@@ -493,54 +519,45 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
     ghost.root.visible = false;
     scene.add(ghost.root);
     ghostRigRef.current = ghost;
-    const parsed = Object.fromEntries(Object.entries(CLIPS).map(([name, text]) => {
-      const bvh = parseBVH(text);
-      const cal = finalizeGround(THREE, rig, bvh, computeCalibration(THREE, bvh));
-      return [name, { bvh, cal, stance: { left: computeStanceData(THREE, rig, bvh, cal, 'left'), right: computeStanceData(THREE, rig, bvh, cal, 'right') } }];
+    // Phase 2: decode the baked assets and derive only the rig-dependent parts.
+    // The old loader parsed ~196 kB of BVH text and ran 361 full-scene
+    // updateMatrixWorld sweeps (~50 ms desktop); this needs none.
+    const parsed = Object.fromEntries(Object.entries(CLIP_DOCS).map(([name, doc]) => {
+      const tracks = decodeClipTracksMap({ [name]: doc })[name];
+      const yOffset = groundOffsetForRig(THREE, rig, tracks);
+      const stance = stanceForRig(THREE, rig, tracks, yOffset);
+      return [name, { tracks, yOffset, stance }];
     }));
     // Phase 81 (B3): spatiotemporal honesty stats measured from the captured walk.
     {
       const wk = parsed.walk_cmu;
-      let travel = 0, prev = null;
-      for (let f = 0; f < wk.bvh.frames; f += 2) {
-        applyBVHFrame(THREE, rig, wk.bvh, f, wk.cal, { treadmill: false });
-        const p = rig.bones.root.position;
-        if (prev) travel += Math.hypot(p.x - prev.x, p.z - prev.z);
-        prev = { x: p.x, z: p.z };
-      }
-      const seconds = wk.bvh.frames * wk.bvh.frameTime;
-      const windows = [...wk.stance.left.windows.map((w) => w), ...wk.stance.right.windows].sort((a, b) => a.start - b.start);
-      const cadence = Math.round((windows.length / seconds) * 60);
-      stateRef.current.contacts = windows.map((w) => w.start);
-      // Step length from raw root travel per detected step (treadmill-neutral).
-      const stepLen = windows.length > 0 ? travel / windows.length : 0;
-      const lw = wk.stance.left.windows, rw = wk.stance.right.windows;
-      const dl = lw.length ? lw.reduce((a, w) => a + (w.end - w.start), 0) / lw.length : 0;
-      const dr = rw.length ? rw.reduce((a, w) => a + (w.end - w.start), 0) / rw.length : 0;
-      const asym = dl && dr ? Math.round((Math.abs(dl - dr) / ((dl + dr) / 2)) * 100) : null;
-      setGaitStats({ speed: +(travel / seconds).toFixed(2), cadence, step: +stepLen.toFixed(2), asym });
-      applyBVHFrame(THREE, rig, wk.bvh, 0, wk.cal);
+      const gait = gaitStatsFromTracks(wk.tracks, wk.stance);
+      stateRef.current.contacts = gait.contacts;
+      setGaitStats({ speed: gait.speed, cadence: gait.cadence, step: gait.step, asym: gait.asym });
+      applyTrackFrame(THREE, rig, wk.tracks, 0, { yOffset: wk.yOffset });
     }
 
-    // Phase 82: precompute sagittal angle curves + standing calibration per clip.
+    // Phase 82 (updated in Phase 2): sagittal angle curves. The baked quaternions
+    // carry the pose, so no scene graph is involved — the curves are pure
+    // quaternion algebra (`trackAngles`), and the two readout paths still agree.
     {
       const data = {};
       for (const key of ['walk_cmu', 'jump_cmu']) {
-
         const c = parsed[key];
-        const apply = (f) => applyBVHFrame(THREE, rig, c.bvh, f, c.cal);
-        const offset = calibrateAngles(THREE, rig, apply, [0]);
+        // The reference is the anatomical one, so the offset is zero — see
+        // ANGLE_REFERENCE above for the measurements behind the decision.
+        const offset = ANGLE_OFFSET;
         angleOffsetsRef.current[key] = offset;
         const N = 60;
         const hip = [], knee = [], ankle = [];
         for (let i = 0; i < N; i++) {
-          const a = sampleSagittalAngles(THREE, rig, apply, Math.round((i / (N - 1)) * (c.bvh.frames - 1)), c.cal, offset);
+          const a = trackAngles(THREE, c.tracks, Math.round((i / (N - 1)) * (c.tracks.frames - 1)), offset);
           hip.push(a.hip); knee.push(a.knee); ankle.push(a.ankle);
         }
         data[key] = { hip, knee, ankle };
       }
       setAngleData(data);
-      stateRef.current.clipsMeta = Object.fromEntries(Object.entries(parsed).map(([k, v]) => [k, { frames: v.bvh.frames, frameTime: v.bvh.frameTime }]));
+      stateRef.current.clipsMeta = Object.fromEntries(Object.entries(parsed).map(([k, v]) => [k, { frames: v.tracks.frames, frameTime: v.tracks.frameTime }]));
     }
 
     // Phase 1 (Masterplan §2.1/§3.3): one manifest per action. The frame grid is
@@ -552,8 +569,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         const c = parsed[key];
         const offset = angleOffsetsRef.current[key];
         if (!c || !offset) return null;
-        const apply = (f) => applyBVHFrame(THREE, rig, c.bvh, f, c.cal);
-        return (frame) => sampleSagittalAngles(THREE, rig, apply, frame, c.cal, offset);
+        return (frame) => trackAngles(THREE, c.tracks, frame, offset);
       };
       const next = {};
       for (const a of ACTIONS) {
@@ -714,14 +730,14 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         const clip = parsed[act.clip.replace('.bvh', '')];
         // The integer frame index is authoritative: no duration/time remapping,
         // so a retimed clip cannot drift (audit A19).
-        const frame = Math.min(clip.bvh.frames - 1, frameIndex);
-        applyBVHFrame(THREE, rig, clip.bvh, frame, clip.cal);
+        const frame = Math.min(clip.tracks.frames - 1, frameIndex);
+        applyTrackFrame(THREE, rig, clip.tracks, frame, { yOffset: clip.yOffset });
         rig.root.updateMatrixWorld(true);
         applyFootPlant(THREE, rig, frame, clip.stance.left, 'left');
         applyFootPlant(THREE, rig, frame, clip.stance.right, 'right');
         rig.root.updateMatrixWorld(true);
         const offset = angleOffsetsRef.current[act.clip.replace('.bvh', '')];
-        if (offset) poseAngles = sampleSagittalAngles(THREE, rig, () => {}, frame, clip.cal, offset);
+        if (offset) poseAngles = trackAngles(THREE, clip.tracks, frame, offset);
       } else {
         const pose = AUTHORED_ACTIONS[st.actionId].pose(t);
         applyAuthoredPose(rig, pose);
@@ -744,7 +760,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
           Object.values(ghostRigRef.current.bones).forEach((b) => b.rotation.set(0, 0, 0));
           if (act.source === 'cmu') {
             const clip = parsed[act.clip.replace('.bvh', '')];
-            applyBVHFrame(THREE, ghostRigRef.current, clip.bvh, Math.min(clip.bvh.frames - 1, Math.floor((t2 / act.duration) * clip.bvh.frames)), clip.cal);
+            applyTrackFrame(THREE, ghostRigRef.current, clip.tracks, Math.min(clip.tracks.frames - 1, Math.floor((t2 / act.duration) * clip.tracks.frames)), { yOffset: clip.yOffset });
           } else {
             applyAuthoredPose(ghostRigRef.current, AUTHORED_ACTIONS[st.actionId].pose(t2));
           }
@@ -1693,7 +1709,7 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
           <span className="kine-rom-source" ref={(el) => { if (el) hudRefs.current.bandSource = el; }} />
         </div>
         <small className="kine-rom-note">
-          Reference band: {bands.knee?.kind === 'task' ? ROM_SOURCES.gait : ROM_SOURCES.aaos}. Sign conventions follow ISB recommendations ({ZERO_REFERENCE.toLowerCase()}): flexion/dorsiflexion positive. Curves are calibrated so the clip's first frame reads 0°, so a capture that starts mid-stride can show values outside the physiological range — treat those as clip artefacts, not anatomy [review pending: SME sign-off on the calibration reference]. Teaching estimate, not a clinical measurement.
+          Reference band: {bands.knee?.kind === 'task' ? ROM_SOURCES.gait : ROM_SOURCES.aaos}. Angles are measured between body segments, so 0° means the two segments are aligned — the anatomical zero, not the first frame of the clip. Sign conventions follow ISB recommendations ({ZERO_REFERENCE.toLowerCase()}): flexion/dorsiflexion positive. A joint that reads outside its band is flagged rather than hidden. The walking capture ships frames 0–63 (its straight, loopable part) and the jump ships frames 0–65 (its hop part); the source clips also contain a turn and a kneel that are cut, so this is a teaching clip, not a gait-lab recording. Teaching estimate, not a clinical measurement.
         </small>
       </div>
       <p className="kine-caption" aria-live="polite"><strong>{phaseName || action.phases[0].name}.</strong> {caption}</p>

@@ -22,7 +22,7 @@ async function openTheater(page) {
 const debug = (page, fn) => page.evaluate(fn);
 
 test.describe('Movement Theater — Phase 1 timeline', () => {
-  test('the clock owns the frame grid: 120 frames at 30 fps for walk', async ({ page }) => {
+  test('the clock owns the frame grid: the baked walk clip drives the shell', async ({ page }) => {
     await openTheater(page);
     const info = await debug(page, () => {
       const d = window.__kineDebug;
@@ -35,8 +35,8 @@ test.describe('Movement Theater — Phase 1 timeline', () => {
         tNorm: d.tNorm()
       };
     });
-    expect(info.frames).toBe(120);
-    expect(info.frameCountManifest).toBe(120);
+    expect(info.frames).toBe(64);   // frames 0-63 of the source capture
+    expect(info.frameCountManifest).toBe(64);
     expect(info.fps).toBe(30);
     expect(info.duration).toBeCloseTo(4, 5);
     expect(info.frame).toBe(0);
@@ -62,7 +62,7 @@ test.describe('Movement Theater — Phase 1 timeline', () => {
     expect(state.frame).toBe(0); // clamped, never negative
   });
 
-  test('stepping is frame-exact on the other clip too (jump, 90 frames)', async ({ page }) => {
+  test('stepping is frame-exact on the other clip too (jump, 66 frames)', async ({ page }) => {
     const theater = await openTheater(page);
     await theater.locator('.kine-actions button', { hasText: 'jump' }).first().click();
     await page.waitForFunction(() => window.__kineDebug?.manifest()?.actionId === 'jump', null, { timeout: 5000 });
@@ -72,7 +72,8 @@ test.describe('Movement Theater — Phase 1 timeline', () => {
       frames: window.__kineDebug.frameCount(),
       t: window.__kineDebug.time().tSeconds
     }));
-    expect(state.frames).toBe(90);
+    expect(state.frames).toBe(66);
+    // 66 = frames 0-65 of the hop capture (the kneel tail is cut)
     expect(state.frame).toBe(1);
     expect(state.t).toBeCloseTo(1 / 30, 4);
   });

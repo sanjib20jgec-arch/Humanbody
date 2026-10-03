@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as THREE from 'three';
-import { parseBVH } from '../src/lib/kinesiology/bvh.js';
+import { parseBVH, sliceBVH } from '../src/lib/kinesiology/bvh.js';
 import { rigNameFor, computeCalibration, finalizeGround, applyBVHFrame, computeStanceData, measureFootSlide } from '../src/lib/kinesiology/retarget.js';
 import { buildPerformanceRig, MUSCLES } from '../src/lib/kinesiology/performanceRig.js';
 import { MUSCLE_FACTS } from '../src/data/kinesiology/muscleFacts.js';
@@ -61,14 +61,19 @@ for (const [id, action] of Object.entries(AUTHORED_ACTIONS)) {
 }
 
 // Phase 76: foot-plant IK must cut stance foot-slide by >=50%.
+// Phase 2: validated on the SHIPPED range. The source capture is a walk and turn;
+// the asset ships frames 0-63 (see scripts/bake-motion-assets.mjs), so testing the
+// full 120-frame source would grade a clip nobody sees.
 {
-  const wb = parseBVH(fs.readFileSync('src/data/kinesiology/walk_cmu.bvh', 'utf8'));
+  const asset = JSON.parse(fs.readFileSync('src/data/kinesiology/clips/walk_cmu.json', 'utf8'));
+  const full = parseBVH(fs.readFileSync('src/data/kinesiology/walk_cmu.bvh', 'utf8'));
+  const wb = sliceBVH(full, asset.sourceRange.from, asset.sourceRange.to);
   const wcal = finalizeGround(THREE, rig, wb, computeCalibration(THREE, wb));
   const dL = computeStanceData(THREE, rig, wb, wcal, 'left');
-  assert(dL.windows.length >= 2, 'walk clip should contain >=2 stance windows');
+  assert(dL.windows.length >= 2, `shipped walk range should contain >=2 stance windows, got ${dL.windows.length}`);
   const naive = measureFootSlide(THREE, rig, wb, wcal, dL, 'left', false);
   const ik = measureFootSlide(THREE, rig, wb, wcal, dL, 'left', true);
-  console.log(`foot slide (left, m): naive ${naive.toFixed(3)} -> IK ${ik.toFixed(3)}`);
+  console.log(`foot slide (left, m): naive ${naive.toFixed(3)} -> IK ${ik.toFixed(3)} on frames ${asset.sourceRange.from}-${asset.sourceRange.to}`);
   assert(ik <= Math.max(0.04, 0.5 * naive), `IK must halve foot slide (naive ${naive.toFixed(3)}, ik ${ik.toFixed(3)})`);
 }
 

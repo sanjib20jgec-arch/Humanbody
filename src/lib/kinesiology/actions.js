@@ -157,7 +157,10 @@ export const ACTIONS = [
     }
   },
   {
-    id: 'walk', source: 'cmu', clip: 'walk_cmu.bvh', duration: 4, loop: true, focus: 'leftLeg',
+    // Duration follows the baked clip grid (64 frames @ 30 fps). The source
+    // capture is a walk *and* turn; the straight, loopable cycle is frames 0-63
+    // (see scripts/bake-motion-assets.mjs for the measured basis).
+    id: 'walk', source: 'cmu', clip: 'walk_cmu.bvh', duration: 64 / 30, loop: true, focus: 'leftLeg',
     phases: [
       { name: 'Heel strike / loading', rla: 'Initial contact + loading response', trad: 'Heel strike / foot flat', until: 0.15, caption: 'Tibialis anterior controls foot slap; quadriceps work eccentrically; gluteus medius steadies the pelvis.', ext: 'Land softly — let the heel kiss the ground, then roll forward like a wheel.' },
       { name: 'Mid-stance', rla: 'Mid-stance', trad: 'Mid-stance', until: 0.4, caption: 'Soleus advances the tibia; gluteus medius keeps the pelvis level over the stance leg.', ext: 'Roll over a steady, level hip — imagine the pelvis is a glass of water.' },
@@ -212,11 +215,15 @@ export const ACTIONS = [
     ...spread(both('latissimusDorsi'), () => 'SY'), ...spread(both('gluteusMedius'), () => 'ST'),
     rectusAbdominis: 'ST', erectorSpinae: 'ST'
   } }),
+  // Phase terms re-timed for the shipped range (frames 0-65 of the hop capture;
+  // see scripts/bake-motion-assets.mjs). Measured events on that range: apex at
+  // frame 0, ground contact at ~frame 9, rebound apex ~frame 21, second contact
+  // ~frame 39, standing from ~frame 45. The captions follow those events.
   Object.assign(track('jump', [
-    { name: 'Countermovement', until: 0.38, caption: 'Quadriceps, gluteals and calf load eccentrically — elastic energy banks.' },
-    { name: 'Take-off', until: 0.52, caption: 'Triple extension: gluteus maximus, quadriceps, gastrocnemius–soleus fire concentrically.' },
-    { name: 'Flight', until: 0.72, caption: 'Core stiffens the trunk; arms swing overhead to lift the centre of mass.' },
-    { name: 'Landing', until: 1, caption: 'The same extensors decelerate the body eccentrically — muscles as brakes.' }
+    { name: 'Descent', until: 0.14, caption: 'The extensors lengthen under load as the body falls — the legs get ready to bank energy.' },
+    { name: 'Landing (absorb)', until: 0.33, caption: 'Quadriceps, gluteals and calf work eccentrically — muscles as brakes; tendon energy banks.' },
+    { name: 'Take-off', until: 0.62, caption: 'Triple extension: gluteus maximus, quadriceps, gastrocnemius–soleus fire concentrically.' },
+    { name: 'Recover', until: 1, caption: 'The extensors hold the body upright and the core stabilises the trunk.' }
   ], (t) => ({
     ...spread(both('quadriceps'), () => bump(t, 0.05, 0.4, 0.9) + bump(t, 0.42, 0.55, 1) + bump(t, 0.72, 0.95, 0.95)),
     ...spread(both('gluteusMaximus'), () => bump(t, 0.05, 0.4, 0.85) + bump(t, 0.42, 0.55, 1) + bump(t, 0.72, 0.95, 0.9)),
@@ -226,7 +233,7 @@ export const ACTIONS = [
     ...spread(both('tibialisAnterior'), () => bump(t, 0.72, 0.95, 0.6)),
     ...spread(both('deltoid'), () => bump(t, 0.4, 0.72, 0.9)),
     rectusAbdominis: bump(t, 0.3, 0.8, 0.8) + 0.25, erectorSpinae: 0.4
-  }), { focus: 'leftUpLeg' }), { source: 'cmu', clip: 'jump_cmu.bvh', duration: 3, roles: {
+  }), { focus: 'leftUpLeg' }), { source: 'cmu', clip: 'jump_cmu.bvh', duration: 66 / 30, roles: {
     ...spread(both('quadriceps'), () => 'PM'), ...spread(both('gluteusMaximus'), () => 'PM'),
     ...spread(both('gastrocnemius'), () => 'PM'), ...spread(both('soleus'), () => 'SY'),
     ...spread(both('hamstrings'), () => 'SY'), ...spread(both('deltoid'), () => 'SY'),

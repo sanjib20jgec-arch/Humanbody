@@ -3,7 +3,7 @@
 Status: **PENDING**
 Reviewer: not assigned
 Last updated: 2026-09-29
-Build hash at report time: `592335ec35cd`
+Build hash at report time: `109af92c168a`
 
 This is a release-gating checklist, not an automated claim of expert approval. Update `scripts/visual-review-status.json` only after a human reviewer has inspected the rendered reference at the listed orientation, viewport, and motion mode. Each sign-off must add a reviewer record naming the reviewer, role, date, build hash, route, and disposition.
 
