@@ -238,7 +238,7 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
 .three-hud { position: absolute; z-index: 4; display: flex; align-items: center; gap: 18px; color: #6c849b; font: 10px var(--mono); letter-spacing: .08em; pointer-events: none; }
 .three-hud-top { top: 17px; left: 18px; }
 .three-hud-bottom { right: 18px; bottom: 17px; gap: 10px; }
-.three-hud-bottom button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; color: #91a8bc; background: rgba(10,25,40,.86); border: 1px solid var(--line-bright); font: 8px var(--mono); pointer-events: auto; }
+.three-hud-bottom button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 7px 9px; color: #b2c5d4; background: rgba(10,25,40,.86); border: 1px solid var(--line-bright); font: 10px var(--mono); pointer-events: auto; }
 .three-hud-bottom button:hover { color: var(--cyan); border-color: rgba(77,216,223,.55); }
 .three-hud-bottom .icon { color: var(--cyan); }
 .touch-hint { color: #7691a8; }
@@ -439,7 +439,7 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
 }
 
 /* Search is useful on touch devices where hover is unavailable. */
-.anatomy-search{position:absolute;z-index:7;top:34px;right:18px;width:min(235px,calc(100% - 210px));display:grid;gap:5px;pointer-events:auto;}
+.anatomy-search{position:absolute;z-index:7;top:52px;right:18px;width:min(235px,calc(100% - 210px));display:grid;gap:5px;padding:10px;border:1px solid rgba(166,189,220,.18);border-radius:12px;background:rgba(7,18,30,.76);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 12px 28px rgba(0,0,0,.22);pointer-events:auto;}
 .anatomy-search label{color:#7892a8;font:10px var(--mono);letter-spacing:.12em;text-transform:uppercase;}
 .anatomy-search div{display:flex;gap:4px;}
 .anatomy-search input{min-width:0;flex:1;padding:8px 9px;color:#e2eff4;background:rgba(7,20,33,.88);border:1px solid rgba(141,245,237,.24);outline:none;font:10px var(--mono);}
@@ -448,7 +448,7 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
 .anatomy-search button{padding:0 9px;color:#07141e;background:#8df5ed;border:1px solid #8df5ed;font:10px var(--mono);font-weight:700;}
 .anatomy-search>span{overflow:hidden;color:#617b91;font:8px var(--mono);text-overflow:ellipsis;white-space:nowrap;}
 @media(max-width:767px){
-  .anatomy-search{top:30px;right:8px;width:calc(100% - 126px);}
+  .anatomy-search{top:52px;right:8px;width:calc(100% - 126px);}
   .anatomy-search label{font-size:10px;}
   .anatomy-search input{min-height:36px;padding:8px;}
   .anatomy-search button{min-width:48px;min-height:36px;}
@@ -679,7 +679,7 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
   .body-3d-stage::after { display: none; }
   .three-hud-top { top: 8px; right: 8px; left: 8px; gap: 0; font-size: 7px; }
   .three-hud-top span:first-child { max-width: 54%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .anatomy-search { top: 31px; right: 8px; left: 8px; width: auto; }
+  .anatomy-search { top: 52px; right: 8px; left: 8px; width: auto; }
   .anatomy-search label { display: none; }
   .anatomy-search input { min-height: 34px; font-size: 9px; }
   .anatomy-search button { min-height: 34px; }
@@ -2016,3 +2016,77 @@ body { overscroll-behavior-y: none; -webkit-text-size-adjust: 100%; text-size-ad
 .import-label { cursor: pointer; }
 .outline-button.danger { border-color: rgba(255, 93, 71, 0.5); color: #ff8f7d; }
 .outline-button.danger.armed { background: rgba(255, 93, 71, 0.16); }
+
+/* Atlas visual UX pass: readable instrument text and a true thumb-reachable
+   detail sheet. Keep blur decorative; solid translucent fill remains legible. */
+.atlas-sheet-handle { display: none; }
+.anatomy-search,
+.anatomy-layer-controller,
+.anatomy-hud-card,
+.atlas-clip-controls,
+.atlas-mode-disclosure,
+#atlas-structure-index,
+#atlas-bookmarks-panel {
+  background-color: rgba(7, 18, 30, .9);
+  border-color: rgba(166, 189, 220, .22);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.three-hud-bottom button,
+.atlas-view-presets button,
+.three-system-nav button { font-size: 10px; }
+.three-system-nav-title,
+.three-system-nav button { letter-spacing: .02em; }
+.body-3d-stage .map-scale { font-size: 10px; }
+.body-3d-stage::after { font-size: 10px; }
+
+@media (max-width: 767px) {
+  .body-3d-stage .anatomy-hud-card.mobile-open {
+    top: auto;
+    right: 8px;
+    bottom: calc(62px + env(safe-area-inset-bottom));
+    left: 8px;
+    width: auto;
+    max-width: none;
+    max-height: min(56dvh, 420px);
+    overflow: auto;
+    padding: 8px 14px calc(14px + env(safe-area-inset-bottom));
+    border-radius: 18px;
+    background: rgba(6, 16, 27, .96);
+    box-shadow: 0 16px 42px rgba(0, 0, 0, .38);
+    overscroll-behavior: contain;
+  }
+  .atlas-sheet-handle {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    min-height: 28px;
+    margin: 0 0 7px;
+    padding: 4px;
+    background: transparent;
+    cursor: pointer;
+  }
+  .atlas-sheet-handle i {
+    display: block;
+    width: 38px;
+    height: 4px;
+    border-radius: 99px;
+    background: rgba(190, 211, 224, .62);
+  }
+  .body-3d-stage .anatomy-hud-card.mobile-open dl div:nth-child(2),
+  .body-3d-stage .anatomy-hud-card.mobile-open dl div:nth-child(3),
+  .body-3d-stage .anatomy-hud-card.mobile-open small { display: grid; }
+  .body-3d-stage .anatomy-hud-card.mobile-open dd { font-size: 11px; white-space: normal; overflow-wrap: anywhere; }
+  .body-3d-stage .anatomy-hud-card.mobile-open .anatomy-hud-actions button { min-height: 40px; font-size: 10px; }
+  .body-3d-stage .three-hud-bottom button { min-height: 40px; font-size: 10px; }
+  .body-3d-stage .anatomy-search { top: 52px; }
+  .body-3d-stage .anatomy-search.mobile-open { top: 48px; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .anatomy-search,
+  .anatomy-layer-controller,
+  .anatomy-hud-card,
+  .atlas-clip-controls,
+  .atlas-mode-disclosure { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}

@@ -54,7 +54,9 @@ for (const lvl of LEVEL_ORDER) {
 
 // UI string parity.
 ok(JSON.stringify(Object.keys(STRINGS_CELL.en).sort()) === JSON.stringify(Object.keys(STRINGS_CELL.bn).sort()), 'STRINGS_CELL en/bn keys differ');
+ok(JSON.stringify(Object.keys(STRINGS_CELL.en).sort()) === JSON.stringify(Object.keys(STRINGS_CELL.hi).sort()), 'STRINGS_CELL en/hi keys differ');
 Object.entries(STRINGS_CELL.bn).forEach(([k, v]) => checkBn(v, `STRINGS_CELL.${k}`));
+Object.entries(STRINGS_CELL.hi).forEach(([k, v]) => ok(v.trim().length > 0, `STRINGS_CELL.hi.${k} is empty`));
 
 // Scientific spot checks pinned to sources (guards against accidental edits).
 const byId = Object.fromEntries(mitochondrionClaims.map((c) => [c.id, c]));

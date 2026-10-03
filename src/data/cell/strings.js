@@ -2,6 +2,7 @@
 export const STRINGS_CELL = {
   en: {
     deepDive: 'ORGANELLE DEEP DIVE',
+    translationNotice: 'Some detailed scientific explanations are still in English; their meaning and sources have not been changed.',
     organelle: 'Choose an organelle',
     topic: 'Choose a topic',
     'cell.both': 'animal + plant',
@@ -32,6 +33,7 @@ export const STRINGS_CELL = {
   },
   bn: {
     deepDive: 'অঙ্গাণুর গভীরে',
+    translationNotice: 'কিছু বিস্তারিত বৈজ্ঞানিক ব্যাখ্যা এখনও ইংরেজিতে আছে; সেগুলির অর্থ বা সূত্র পরিবর্তন করা হয়নি।',
     organelle: 'একটি অঙ্গাণু বেছে নিন',
     topic: 'একটি বিষয় বেছে নিন',
     'cell.both': 'প্রাণী + উদ্ভিদ',
@@ -59,5 +61,11 @@ export const STRINGS_CELL = {
     'level.class10': 'দশম শ্রেণি',
     'level.class11-12': 'একাদশ–দ্বাদশ শ্রেণি',
     'level.neet': 'NEET'
+  },
+  hi: {
+    deepDive: 'विस्तृत अध्ययन', translationNotice: 'कुछ विस्तृत वैज्ञानिक व्याख्याएँ अभी अंग्रेज़ी में उपलब्ध हैं; उनका अर्थ या स्रोत नहीं बदला गया है।', organelle: 'कोशिकांग चुनें', topic: 'विषय चुनें', 'cell.both': 'जंतु + पादप', 'cell.animal': 'जंतु कोशिका', 'cell.plant': 'पादप कोशिका',
+    mitoTitle: 'माइटोकॉन्ड्रियन का 3D मॉडल', mitoLead: 'घुमाएँ, बड़ा करें और किसी भाग को चुनें। इसकी कार्यप्रणाली देखने के लिए अध्याय चलाएँ।', badge3d: 'प्रक्रियात्मक 3D मॉडल', badge2d: '2D चित्र (कम ग्राफ़िक्स)', chapters: 'एनिमेशन अध्याय', play: 'चलाएँ', pause: 'रोकें', scrub: 'एनिमेशन समय',
+    reducedNote: 'गतियाँ कम करने का विकल्प चालू है: हर अध्याय स्थिर दृश्य दिखाता है। समय स्लाइडर से आगे बढ़ें।', parts: 'भाग', tapHint: 'सुझाव: मॉडल के किसी भाग को चुनने के लिए उस पर टैप करें।', selected: 'चुना गया भाग', myths: 'आम गलतफ़हमियाँ', quiz: 'त्वरित जाँच', correct: 'सही।', incorrect: 'यह सही नहीं है — उभारा गया विकल्प सही है।', retry: 'फिर कोशिश करें', facts: 'तथ्य और स्रोत',
+    'level.class9': 'कक्षा 9', 'level.class10': 'कक्षा 10', 'level.class11-12': 'कक्षा 11–12', 'level.neet': 'NEET'
   }
 };

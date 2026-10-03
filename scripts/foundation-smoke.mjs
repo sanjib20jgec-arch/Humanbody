@@ -6,6 +6,8 @@ import { PREFERENCE_SCHEMA, sanitizePreference, resolveTheme, levelIncludes } fr
 import { STRINGS, translate, formatNumber } from '../src/lib/i18n.js';
 import { validateClaims } from '../src/lib/claims.js';
 import { foundationClaims } from '../src/data/claims/foundationClaims.js';
+import { modules } from '../src/data/modules.js';
+import { localizeModule, localizeObjectives } from '../src/data/moduleText.bn.js';
 import { rgbToOklch, oklchToRgb } from './generate-light-theme.mjs';
 
 let checks = 0;
@@ -22,7 +24,9 @@ ok(levelIncludes('class10', 'class9') && !levelIncludes('class9', 'neet'), 'dept
 // 2. i18n parity, formal Bengali hygiene, English digits.
 const en = Object.keys(STRINGS.en).sort();
 const bn = Object.keys(STRINGS.bn).sort();
+const hi = Object.keys(STRINGS.hi).sort();
 ok(JSON.stringify(en) === JSON.stringify(bn), `en/bn keys differ: ${en.filter((k) => !bn.includes(k)).concat(bn.filter((k) => !en.includes(k)))}`);
+ok(JSON.stringify(en) === JSON.stringify(hi), `en/hi keys differ: ${en.filter((k) => !hi.includes(k)).concat(hi.filter((k) => !en.includes(k)))}`);
 const ALLOWED_LATIN = /\b(WBBSE|NCERT|CBSE|NEET|2D|3D|ms|L|mOsm|kg|h|LH)\b/g;
 for (const [k, v] of Object.entries(STRINGS.bn)) {
   ok(!/[০-৯]/.test(v), `${k}: Bengali digits not allowed (D26)`);
@@ -30,7 +34,16 @@ for (const [k, v] of Object.entries(STRINGS.bn)) {
   ok(v.trim().length > 0, `${k}: empty`);
 }
 ok(translate('bn', 'missing.key', 'fb') === 'fb', 'fallback works');
+ok(translate('hi', 'settings.language') === 'भाषा', 'Hindi translation lookup works');
+ok(PREFERENCE_SCHEMA.language.values.includes('hi') && sanitizePreference('language', 'hi') === 'hi', 'Hindi language preference is accepted');
 ok(/^[0-9,]+$/.test(formatNumber(123456)), 'numbers use English digits');
+for (const module of modules) {
+  const localized = localizeModule(module, 'hi');
+  ok(localized.title !== module.title, `Hindi module title missing: ${module.id}`);
+  ok(localized.description && /[\u0900-\u097F]/.test(localized.description), `Hindi module description missing: ${module.id}`);
+  const objectives = localizeObjectives(module.id, [], 'hi');
+  ok(Array.isArray(objectives), `Hindi objectives must be an array: ${module.id}`);
+}
 
 // 3. Accuracy claims.
 const claimErrors = validateClaims(foundationClaims);

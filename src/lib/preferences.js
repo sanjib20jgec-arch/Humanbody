@@ -5,7 +5,7 @@
 
 export const PREFERENCE_SCHEMA = {
   theme: { key: 'hbl-theme', values: ['auto', 'light', 'dark'], fallback: 'auto' },
-  language: { key: 'hbl-language', values: ['en', 'bn'], fallback: 'en' },
+  language: { key: 'hbl-language', values: ['en', 'bn', 'hi'], fallback: 'en' },
   curriculum: { key: 'hbl-curriculum', values: ['wbbse', 'ncert'], fallback: 'wbbse' },
   level: { key: 'hbl-level', values: ['class9', 'class10', 'class11-12', 'neet'], fallback: 'class9' },
   graphics: { key: 'hbl-graphics', values: ['full', 'low'], fallback: 'full' },
@@ -59,7 +59,7 @@ export function applyPreferencesToDocument(prefs, doc = typeof document !== 'und
   root.dataset.theme = resolved;
   root.dataset.themePreference = prefs.theme;
   root.style.colorScheme = resolved;
-  root.lang = prefs.language === 'bn' ? 'bn' : 'en';
+  root.lang = ['en', 'bn', 'hi'].includes(prefs.language) ? prefs.language : 'en';
   root.dataset.curriculum = prefs.curriculum;
   root.dataset.level = prefs.level;
   root.dataset.graphics = prefs.graphics;
