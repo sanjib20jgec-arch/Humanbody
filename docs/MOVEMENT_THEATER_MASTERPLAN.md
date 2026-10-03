@@ -814,8 +814,8 @@ Shipped in this build (branch `arena/01a10393-humanbody`):
 | Transport UI: controlled scrubber (drag pauses → seeks frame-exact → resumes on release), `−1f/+1f`, 0.25/0.5/1×, Once/Loop/Ping-pong, manifest-driven snap buttons, live telemetry panel with phase feed, min/max, band + provenance | `src/components/KinesiologyTheater.jsx`, `src/styles.css` | browser spec (21 new tests) |
 | Five-role CVD-safe palette + text-redundant legend + luminance intensity ramp | `src/lib/kinesiology/performanceRig.js`, `src/styles.css` | timeline smoke (palette + ramp luminance + greyscale separation) |
 | **Cross-path angle-sign fix** (retargeted sampler vs authored reader disagreed by sign for hip and ankle on the same pose) | `src/lib/kinesiology/jointAngles.js` | timeline smoke (two paths agree within ±1° on three synthetic poses; independent projection check) |
-| M1 harness (`__kineDebug.report()`: frame ring, p95, draw calls, textures, DOM-write counters, scrub latency) | `src/components/KinesiologyTheater.jsx` | `docs/MOVEMENT_THEATER_M1_MEASUREMENTS.md` protocol |
-| Automated gates in CI: `verify:kine-timeline` (54 checks) and `verify:kine-wiring` (static contracts), both added to `npm run verify` | `package.json` | full `npm run verify` green in the sandbox |
+| M1 harness (`__kineDebug.report()`: frame ring, p95, draw calls, textures, DOM-write counters, scrub latency) **plus an in-app run button** so the device gate can be run on a phone without a console (DEV, or `?m1=1` on a production preview) | `src/components/KinesiologyTheater.jsx`, `src/styles.css` | `docs/MOVEMENT_THEATER_M1_MEASUREMENTS.md` protocol; browser spec asserts the JSON keys |
+| Automated gates in CI: `verify:kine-timeline` (54 checks) and `verify:kine-wiring` (static contracts), both added to `npm run verify` | `package.json` | full `npm run verify` green in the sandbox; 166 browser tests listed (`npx playwright test --list`), **unrun for lack of a browser** |
 
 Not yet proven (needs a physical device — no GPU browser is available in the dev sandbox):
 

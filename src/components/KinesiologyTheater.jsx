@@ -77,6 +77,19 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   const mountRef = useRef(null);
   const meterRefs = useRef({});
   const meterValueRef = useRef({});
+  // ---- M1 measurement harness (Masterplan §5.5, §6 Phase 1 gate) ----------
+  // The harness has to be reachable on a *physical device*: typing console
+  // snippets into a phone is not a protocol anyone can run. In DEV it is always
+  // offered; a production build only reveals it behind `?m1=1`, so the visual
+  // gate and normal users never see it.
+  const [m1Enabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (import.meta.env.DEV) return true;
+    try { return new URLSearchParams(window.location.search).has('m1'); } catch { return false; }
+  });
+  const [m1, setM1] = useState(null);
+  const m1TimerRef = useRef(null);
+  const reportRef = useRef(null);
   const [actionId, setActionId] = useState('walk');
   const [cameraId, setCameraId] = useState('anterior');
   const orbitRef = useRef(false); // Phase 119 (R10): user grab temporarily frees any preset camera
@@ -1097,7 +1110,12 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
         };
       }
     };
-    if (import.meta.env.DEV) window.__kineDebug = debugHook;
+    // The report builder must survive into the production build for the M1
+    // button (a device run happens against `vite preview`, not the dev server).
+    reportRef.current = debugHook.report;
+    if (import.meta.env.DEV || (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('m1'))) {
+      window.__kineDebug = debugHook;
+    }
 
     const raycaster = new THREE.Raycaster();
     const onPick = (event) => {
@@ -1282,6 +1300,62 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
   }, [setPlaying, setSpeed]);
 
   const muscleList = useMemo(() => Object.keys(roles).sort(), [roles]);
+
+  // ---- M1 run/copy ---------------------------------------------------------
+  const m1ReportNow = (runSeconds) => {
+    const report = {
+      ...(reportRef.current?.() || { harnessMissing: true }),
+      runSeconds: runSeconds ?? null,
+      build: import.meta.env.DEV ? 'dev' : 'prod'
+    };
+    const text = JSON.stringify(report, null, 2);
+    try { console.log('[M1 report]', report); } catch { /* console may be absent */ }
+    setM1((prev) => ({ ...(prev || {}), left: 0, status: 'report ready \u00b7 long-press the box to copy', text }));
+    // Clipboard access needs a secure context; when it is missing the textarea
+    // above is the copy path (this is the common case on a LAN dev server).
+    navigator.clipboard?.writeText(text)
+      .then(() => setM1((prev) => ({ ...(prev || {}), status: 'report copied as JSON \u00b7 also logged to console' })))
+      .catch(() => {});
+  };
+
+  const finishM1 = (seconds) => {
+    if (m1TimerRef.current) { clearInterval(m1TimerRef.current); m1TimerRef.current = null; }
+    setPlaying(false);
+    m1ReportNow(seconds);
+  };
+
+  const startM1Run = () => {
+    if (m1TimerRef.current) clearInterval(m1TimerRef.current);
+    const perf = (window.__kinePerf = window.__kinePerf || {});
+    perf.frames = [];           // a fresh ring: 60 s at 60 FPS = 3,600 samples > 240, so
+    perf.domWrites = 0;         // the p95 below covers the tail of the run only
+    perf.peakDomWrites = 0;
+    perf.scrubLatencyMs = null;
+    perf.frameCount = 0;
+    try { timeRef.current?.seekFrame(0); } catch { /* nothing to seek yet */ }
+    setPlaying(true);
+    const seconds = 60;
+    const startedAt = performance.now();
+    setM1({ left: seconds, startedAt, status: 'running \u00b7 keep this tab in the foreground', text: '' });
+    const id = setInterval(() => {
+      const left = Math.max(0, seconds - Math.round((performance.now() - startedAt) / 1000));
+      if (left <= 0) { m1TimerRef.current = null; clearInterval(id); finishM1(seconds); return; }
+      setM1((prev) => ({ ...(prev || {}), left }));
+    }, 1000);
+    m1TimerRef.current = id;
+  };
+
+  const stopM1Run = () => {
+    if (!m1TimerRef.current) return;
+    clearInterval(m1TimerRef.current);
+    m1TimerRef.current = null;
+    const ranFor = m1?.startedAt ? Math.max(1, Math.round((performance.now() - m1.startedAt) / 1000)) : null;
+    setPlaying(false);
+    m1ReportNow(ranFor);
+  };
+
+  useEffect(() => () => { if (m1TimerRef.current) clearInterval(m1TimerRef.current); }, []);
+
 
   return <div className={`kinesiology-theater rep-${repMode}`} data-kinesiology-theater="true">
     {tour && <div className="kine-tour" role="dialog" aria-label="New to 3D? quick tour">
@@ -1488,6 +1562,17 @@ export default function KinesiologyTheater({ activeView, reducedMotion, playing,
           {['auto', 'cinema', 'fast'].map((q) => <button key={q} type="button" className={quality === q ? 'active' : ''} aria-pressed={quality === q} onClick={() => { try { localStorage.setItem('kine-quality', q); } catch {} setQuality(q); }}>{q}</button>)}
         </span>
         {typeof sessionStorage !== 'undefined' && sessionStorage.getItem('kine-quality-note') && quality === 'fast' && <small className="kine-pace">auto-switched to fast for smoothness</small>}
+        {m1Enabled && <span className="kine-m1" role="group" aria-label="Device measurement harness">
+          <button
+            type="button"
+            className="kine-tool"
+            onClick={m1?.startedAt ? stopM1Run : startM1Run}
+            aria-label={m1?.startedAt ? 'Stop the device measurement and build the report' : 'Run a 60 second device measurement'}
+          >{m1?.startedAt ? `\u23f9 stop \u00b7 ${m1.left}s` : '\u23f1 60 s run'}</button>
+          <button type="button" className="kine-tool" onClick={() => m1ReportNow(null)} aria-label="Build the measurement report without running">\u29c9 M1 report</button>
+          {m1?.status && <small className="kine-m1-note" role="status">{m1.status}</small>}
+          {m1?.text && <textarea className="kine-m1-out" rows={3} readOnly value={m1.text} aria-label="Measurement report JSON" onFocus={(e) => e.target.select()} />}
+        </span>}
         <button type="button" className="kine-tool" onClick={() => { strokesRef.current = []; }}>clear ink</button>
         <button type="button" className="kine-tool" onClick={() => {
           const src = document.querySelector('.kine-stage canvas');

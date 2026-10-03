@@ -7,16 +7,32 @@ below are filled in, **no 60 FPS claim for this build is verified**; the budget
 numbers in the Masterplan (`docs/MOVEMENT_THEATER_MASTERPLAN.md` §5) remain the
 target, not a result.
 
-The harness is built into the app in development builds only (`import.meta.env.DEV`),
-so production users pay nothing for it.
+The harness is built into the app. In a development build it is always present;
+in a production build it only appears when the URL carries `?m1=1`, so normal
+users pay nothing for it.
 
 ---
 
 ## 1. What to run
 
+### 1a. The two-tap path (no console, works on a phone)
+
 ```bash
-npm run dev -- --host 0.0.0.0      # then open the printed URL on the device
+npm run build && npx vite preview --host 0.0.0.0 --port 4173
+# then open http://<laptop-ip>:4173/?m1=1 on the device
 ```
+
+Open the app → **Movement Theater** → tap **⏱ 60 s run** in the transport row.
+The run seeks to frame 0, plays at 1× for 60 s, then pauses and fills the
+**M1 report** box with JSON (and copies it to the clipboard when the page is on a
+secure origin; otherwise long-press the box to copy). **⧉ M1 report** produces the
+same JSON instantly without running.
+
+Use the production preview (`vite preview`) for the numbers in this document:
+the report records `"build": "prod"` or `"build": "dev"`, and a `dev` run carries
+the unminified React/HMR cost, so it may only be used for sanity checks.
+
+### 1b. The console path (desktop, when a console is available)
 
 Open the app → **Movement Theater** → wait for the figure to move → open the
 device console (desktop: DevTools; Android: `chrome://inspect`; iOS Safari:

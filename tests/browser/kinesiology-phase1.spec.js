@@ -260,6 +260,23 @@ test.describe('Movement Theater — Phase 1 telemetry HUD', () => {
     expect(sample.writes).toBe(0);             // ...but the HUD is silent
   });
 
+  // The M1 gate runs on a physical phone, where nobody can open a console.
+  // This pins the in-app path: one tap produces the same JSON the report needs.
+  test('the device-measurement harness builds a report without the console', async ({ page }) => {
+    const theater = await openTheater(page);
+    const harness = theater.locator('.kine-m1');
+    await expect(harness).toBeVisible();
+    await harness.locator('button', { hasText: 'M1 report' }).click();
+    const box = theater.locator('.kine-m1-out');
+    await expect(box).toBeVisible();
+    const report = JSON.parse(await box.inputValue());
+    for (const key of ['frames', 'gpu', 'hud', 'rig', 'build', 'userAgent']) {
+      expect(report[key], `report is missing ${key}`).toBeTruthy();
+    }
+    expect(report.build).toBe('dev');
+    expect(report.hud.targetHz).toBe(1000 / 15);
+  });
+
   test('the telemetry panel never claims clinical measurement', async ({ page }) => {
     const theater = await openTheater(page);
     await expect(theater.locator('.kine-rom-note')).toContainText('not a clinical measurement');

@@ -1046,6 +1046,7 @@
 :root[data-theme="light"] .kine-notation-svg { background: rgba(233,231,227,0.7) }
 :root[data-theme="light"] .kine-notation small { color: #4f647a }
 :root[data-theme="light"] .kine-pace { color: #4f647a }
+:root[data-theme="light"] .kine-m1-out { background: rgba(14,14,14,0.04); border: 1px solid rgba(14,14,14,0.16) }
 @media (max-width: 640px) {
 :root[data-theme="light"] .kine-transport { box-shadow: 0 -10px 28px rgba(252,250,246,0.55) }
 }
